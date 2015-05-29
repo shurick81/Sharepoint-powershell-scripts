@@ -1,0 +1,229 @@
+# Inspired by following article:
+# https://rkeithhill.wordpress.com/2013/07/25/using-powershell-to-modify-dcom-launch-activation-settings/
+
+
+$farmAccount = ( Get-SPFarm ).DefaultServiceAccount.Name.ToLower()
+$accounts = @( $farmAccount )
+Get-SPWebApplication | % {
+	$poolAccount = $_.ApplicationPool.Username.ToLower()
+	if ( $accounts.indexOf( $poolAccount ) -eq -1 ) {
+		$accounts += $poolAccount
+	}
+}
+$appsIDsnUsers = @( @( "{61738644-F196-11D0-9953-00C04FD919C1}", $accounts ),
+			@( "{000C101C-0000-0000-C000-000000000046}", $farmAccount ) )
+
+function enable-privilege {
+ param(
+  [ValidateSet(
+   "SeAssignPrimaryTokenPrivilege", "SeAuditPrivilege", "SeBackupPrivilege",
+   "SeChangeNotifyPrivilege", "SeCreateGlobalPrivilege", "SeCreatePagefilePrivilege",
+   "SeCreatePermanentPrivilege", "SeCreateSymbolicLinkPrivilege", "SeCreateTokenPrivilege",
+   "SeDebugPrivilege", "SeEnableDelegationPrivilege", "SeImpersonatePrivilege", "SeIncreaseBasePriorityPrivilege",
+   "SeIncreaseQuotaPrivilege", "SeIncreaseWorkingSetPrivilege", "SeLoadDriverPrivilege",
+   "SeLockMemoryPrivilege", "SeMachineAccountPrivilege", "SeManageVolumePrivilege",
+   "SeProfileSingleProcessPrivilege", "SeRelabelPrivilege", "SeRemoteShutdownPrivilege",
+   "SeRestorePrivilege", "SeSecurityPrivilege", "SeShutdownPrivilege", "SeSyncAgentPrivilege",
+   "SeSystemEnvironmentPrivilege", "SeSystemProfilePrivilege", "SeSystemtimePrivilege",
+   "SeTakeOwnershipPrivilege", "SeTcbPrivilege", "SeTimeZonePrivilege", "SeTrustedCredManAccessPrivilege",
+   "SeUndockPrivilege", "SeUnsolicitedInputPrivilege")]
+  $Privilege,
+  ## The process on which to adjust the privilege. Defaults to the current process.
+  $ProcessId = $pid,
+  ## Switch to disable the privilege, rather than enable it.
+  [Switch] $Disable
+ )
+
+ ## Taken from P/Invoke.NET with minor adjustments.
+ $definition = @'
+ using System;
+ using System.Runtime.InteropServices;
+  
+ public class AdjPriv
+ {
+  [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
+  internal static extern bool AdjustTokenPrivileges(IntPtr htok, bool disall,
+   ref TokPriv1Luid newst, int len, IntPtr prev, IntPtr relen);
+  
+  [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
+  internal static extern bool OpenProcessToken(IntPtr h, int acc, ref IntPtr phtok);
+  [DllImport("advapi32.dll", SetLastError = true)]
+  internal static extern bool LookupPrivilegeValue(string host, string name, ref long pluid);
+  [StructLayout(LayoutKind.Sequential, Pack = 1)]
+  internal struct TokPriv1Luid
+  {
+   public int Count;
+   public long Luid;
+   public int Attr;
+  }
+  
+  internal const int SE_PRIVILEGE_ENABLED = 0x00000002;
+  internal const int SE_PRIVILEGE_DISABLED = 0x00000000;
+  internal const int TOKEN_QUERY = 0x00000008;
+  internal const int TOKEN_ADJUST_PRIVILEGES = 0x00000020;
+  public static bool EnablePrivilege(long processHandle, string privilege, bool disable)
+  {
+   bool retVal;
+   TokPriv1Luid tp;
+   IntPtr hproc = new IntPtr(processHandle);
+   IntPtr htok = IntPtr.Zero;
+   retVal = OpenProcessToken(hproc, TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, ref htok);
+   tp.Count = 1;
+   tp.Luid = 0;
+   if(disable)
+   {
+    tp.Attr = SE_PRIVILEGE_DISABLED;
+   }
+   else
+   {
+    tp.Attr = SE_PRIVILEGE_ENABLED;
+   }
+   retVal = LookupPrivilegeValue(null, privilege, ref tp.Luid);
+   retVal = AdjustTokenPrivileges(htok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+   return retVal;
+  }
+ }
+'@
+
+ $processHandle = (Get-Process -id $ProcessId).Handle
+ $type = Add-Type $definition -PassThru
+ $type[0]::EnablePrivilege($processHandle, $Privilege, $Disable)
+}
+
+# ===================================================================================
+# Func: Take-OwnerShip
+# Desc: Takes OwnerShip of the Registry Key
+# ===================================================================================
+function Take-OwnerShip ($RegKey) {
+	$key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($RegKey,[Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,[System.Security.AccessControl.RegistryRights]::takeownership)
+	
+	Write-Host " - Taking Ownership of to $RegKey"
+	# You must get a blank acl for the key b/c you do not currently have access
+	$acl = $key.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None)
+	$me = [System.Security.Principal.NTAccount]$userName
+	$acl.SetOwner($me)
+	$key.SetAccessControl($acl)
+	
+	Write-Host " - Setting Full Control to $RegKey"
+	# After you have set owner you need to get the acl with the perms so you can modify it.
+	$acl = $key.GetAccessControl()
+	$rule = New-Object System.Security.AccessControl.RegistryAccessRule ($userName,"FullControl","Allow")
+	$acl.SetAccessRule($rule)
+	$key.SetAccessControl($acl)
+
+	$key.Close()
+}
+
+# ===================================================================================
+# Func: Grant-Permissions
+# Desc: Grants Full Control Permissions for the current user
+# ===================================================================================
+function Grant-Permissions{
+	 param(
+	  [String]$RegKey
+	 )
+
+	 Write-Host " - Adding $userName to $RegKey"
+	 
+	 $CurrentACL = Get-Acl $RegKey
+	 
+	 $SystemACLPermission = $userName,"FullControl","ContainerInherit,ObjectInherit","None","Allow"
+	 $SystemAccessRule = new-object System.Security.AccessControl.RegistryAccessRule $SystemACLPermission
+	 $CurrentACL.AddAccessRule($SystemAccessRule)
+	 
+	 Set-Acl -Path $RegKey -AclObject $CurrentACL
+}
+
+# ===================================================================================
+# Func: New-DComAccessControlEntry
+# Desc: Grants the service account local launch & activation permissions
+# ===================================================================================
+function New-DComAccessControlEntry {
+    param(
+        [Parameter(Mandatory=$true, Position=0)]
+        [string] 
+        $Domain,
+		
+        [Parameter(Mandatory=$true, Position=1)]
+        [string]
+        $ServiceAccountName,
+ 
+        [string] 
+        $ComputerName = ".",
+
+        [switch] 
+        $Group
+    )
+ 
+	$name = $ServiceAccountName.split("\")[1]
+	Write-Host " - Granting the service account $Name local launch & activation permissions"
+	
+    #Create the Trusteee Object
+    $Trustee = ([WMIClass] "\\$ComputerName\root\cimv2:Win32_Trustee").CreateInstance()
+    #Search for the user or group, depending on the -Group switch
+    if (!$group) { 
+        $account = [WMI] "\\$ComputerName\root\cimv2:Win32_Account.Name='$Name',Domain='$Domain'" }
+    else { 
+        $account = [WMI] "\\$ComputerName\root\cimv2:Win32_Group.Name='$Name',Domain='$Domain'" 
+    }
+ 
+    #Get the SID for the found account.
+    $accountSID = [WMI] "\\$ComputerName\root\cimv2:Win32_SID.SID='$($account.sid)'"
+ 
+    #Setup Trusteee object
+    $Trustee.Domain = $Domain
+    $Trustee.Name = $Name
+    $Trustee.SID = $accountSID.BinaryRepresentation
+ 
+    #Create ACE (Access Control List) object.
+    $ACE = ([WMIClass] "\\$ComputerName\root\cimv2:Win32_ACE").CreateInstance()
+ 
+    # COM Access Mask
+    #   Execute         =  1,
+    #   Execute_Local   =  2,
+    #   Execute_Remote  =  4,
+    #   Activate_Local  =  8,
+    #   Activate_Remote = 16 
+ 
+    #Setup the rest of the ACE.
+    $ACE.AccessMask = 11 # Execute | Execute_Local | Activate_Local
+    $ACE.AceFlags = 0
+    $ACE.AceType = 0 # Access allowed
+    $ACE.Trustee = $Trustee
+    $ACE
+}
+
+# Step1: Take Ownership of Registry Key
+	ForEach ( $appIDnUsers in $appsIDsnUsers ) {
+		$AppID = $appIDnUsers[0]
+		# calculate the currently logged on (Admin) User
+		$userName = $env:Userdomain + "\" + $env:Username
+		$FullregKeyPath = "HKLM:SOFTWARE\Classes\AppID\$AppID"
+		$regKeyPath = "SOFTWARE\Classes\AppID\$AppID"
+		enable-privilege SeTakeOwnershipPrivilege
+		Take-OwnerShip $regKeyPath
+		Grant-Permissions $FullregKeyPath
+	}
+	
+# Step2: Set DCOM Permissions
+	ForEach ( $appIDnUsers in $appsIDsnUsers ) {
+		$AppID = $appIDnUsers[0]
+		$filter = "AppID='$AppID'"
+		$dcom = Get-WMIObject Win32_DCOMApplicationSetting -Filter $filter -EnableAllPrivileges
+		$sd = $dcom.GetLaunchSecurityDescriptor().Descriptor
+		$accounts = $appIDnUsers[1]
+		ForEach ( $serviceAccount in $accounts ) {
+			# Configure the DComConfg settings for the component so it can be activated & launched locally
+		
+			$nsAce = $sd.Dacl | Where { $_.Trustee.Name -eq $serviceAccount }
+			if ($nsAce) {
+				$nsAce.AccessMask = 11
+			}
+			else {
+				$newAce = New-DComAccessControlEntry -Domain $env:Userdomain -ServiceAccountName $serviceAccount
+				$sd.Dacl += $newAce
+			}
+		}
+		$dcom.SetLaunchSecurityDescriptor($sd)
+	}
+
