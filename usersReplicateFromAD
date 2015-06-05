@@ -1,0 +1,117 @@
+# You can save this script to ps1 file and schedule it. Here you can learn how to schedule powershell script: http://blogs.technet.com/b/heyscriptingguy/archive/2012/08/11/weekend-scripter-use-the-windows-task-scheduler-to-run-a-windows-powershell-script.aspx
+
+# Parameters
+$siteUrls = @('https://servername')
+$ouNames = @()
+$textFieldType = 1
+$pictureFieldType = 2
+$fields = @(@('Picture', 'thumbnailPhoto', $pictureFieldType), @('Title', 'name', $textFieldType), @('Department', 'department', $textFieldType), @('JobTitle', 'title', $textFieldType))
+$userCT = '0x010A008652D57858379045906F668D27E5CA2C'
+$userListName = 'User Information list'
+$picturesFolder = 'DocLib3/Pictures'
+$tempPictureFolder = 'c:\userPictures'
+
+$a = [reflection.assembly]::LoadWithPartialName("System.Drawing")
+$a = [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
+Add-PSSnapin Microsoft.SharePoint.PowerShell
+
+foreach ($siteUrl in $siteUrls)
+{
+    $web = Get-SPWeb $siteUrl
+    $list = $web.Lists[$userListName]
+    $users = $list.Items | Where {$_.ContentTypeId -eq $userCT}
+    $NewBitmap1 = new-object System.Drawing.Bitmap 72,72
+    $graphics1=[System.Drawing.Graphics]::FromImage($NewBitmap1)
+    $graphics1.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $NewBitmap2 = new-object System.Drawing.Bitmap 48,48
+    $graphics2=[System.Drawing.Graphics]::FromImage($NewBitmap2)
+    $graphics2.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    foreach ($user in $users)
+    {
+        $spFolder = $web.GetFolder($picturesFolder)
+
+        $login = $user['Name']
+        $login
+        $login = $login.TrimStart("i:0#.w|")
+        $login = $login.Substring($login.IndexOf('\') + 1)
+        $search = New-Object DirectoryServices.DirectorySearcher([ADSI]“”)
+        $search.filter = “(&(objectClass=user)(sAMAccountName=$login))”
+        $results = $search.Findall()
+        if ($results.length -gt 0)
+        {
+            $ADUser = $results[0]
+            $fileName = [RegEx]::Replace($login, "[{0}]" -f ([RegEx]::Escape([String][System.IO.Path]::GetInvalidFileNameChars())), '')
+            foreach ($field in $fields)
+            {
+                switch ($field[2])
+                {
+                    $textFieldType
+                    {
+                        if ($ADUser.Properties[$field[1]].Count -gt 0)
+                        {
+                            $ADText = $ADUser.Properties[$field[1]][0]
+                        } else {
+                            $ADText = ''
+                        }
+                        if ($user[$field[0]] -ne $null)
+                        {
+                            $SPText = $user[$field[0]]
+                        } else {
+                            $SPText = ''
+                        }
+                        if ($SPText -ne $ADText)
+                        {
+                            $field[0] + '=' + $ADText + ' (' + $SPText + ')'
+                            $user[$field[0]] = $ADText
+                        }
+                    }
+                    $pictureFieldType
+                    {
+                        $pictureStream = $ADUser.Properties[$field[1]]
+                        if ($pictureStream -ne $null)
+                        {
+                            $pictureStream | Set-Content ($tempPictureFolder + '\' + $fileName + "_LThumb.jpg") -Encoding byte
+                            Start-Sleep -s 1
+                            $OldBitmap = new-object System.Drawing.Bitmap ($tempPictureFolder + '\' + $fileName + "_LThumb.jpg")
+                            if ($OldBitmap.Width -gt $OldBitmap.Height)
+                            {
+                                $graphics1.DrawImage($OldBitmap, -[int] (($OldBitmap.Width/$OldBitmap.Height*72)-72)/2, 0, [int] $OldBitmap.Width/$OldBitmap.Height*72, 72)
+                                $graphics2.DrawImage($OldBitmap, -[int] (($OldBitmap.Width/$OldBitmap.Height*48)-48)/2, 0, [int] $OldBitmap.Width/$OldBitmap.Height*48, 48)
+                            } else
+                            {
+                                $graphics1.DrawImage($OldBitmap, 0, -[int] (($OldBitmap.Height/$OldBitmap.Width*72)-72)/2, 72, [int] $OldBitmap.Height/$OldBitmap.Width*72)
+                                $graphics2.DrawImage($OldBitmap, 0, -[int] (($OldBitmap.Height/$OldBitmap.Width*48)-48)/2, 48, [int] $OldBitmap.Height/$OldBitmap.Width*48)
+                            }
+                            $OldBitmap.Dispose()
+                            $NewBitmap1.Save(($tempPictureFolder + '\' + $fileName + "_MThumb.jpg"), ([system.drawing.imaging.imageformat]::jpeg))
+                            $NewBitmap2.Save(($tempPictureFolder + '\' + $fileName + "_SThumb.jpg"), ([system.drawing.imaging.imageformat]::jpeg))
+                            
+                            $file = Get-Item ($tempPictureFolder + '\' + $fileName + "_LThumb.jpg")
+                            $c = $spFolder.Files.Add($fileName + "_LThumb.jpg" ,$file.OpenRead(), $true)
+                            $file = Get-Item ($tempPictureFolder + '\' + $fileName + "_MThumb.jpg")
+                            $c = $spFolder.Files.Add($fileName + "_MThumb.jpg" ,$file.OpenRead(), $true)
+                            $file = Get-Item ($tempPictureFolder + '\' + $fileName + "_SThumb.jpg")
+                            $c = $spFolder.Files.Add($fileName + "_SThumb.jpg" ,$file.OpenRead(), $true)
+                            $user[$field[0]] = '/' + $picturesFolder + '\' + $fileName + "_MThumb.jpg"
+                        }
+                    }
+                }
+            }
+            if ($user['UserInfoHidden'])
+            {
+                'UserInfoHidden=false (true)'
+                $user['UserInfoHidden'] = $false
+            }
+            $user.Update()
+        } else {
+            if (($user['UserInfoHidden'] -eq $false) -or ($user['UserInfoHidden'] -eq $null))
+            {
+                'UserInfoHidden=true (false)'
+                $user['UserInfoHidden'] = $true
+                $user.Update()
+            }
+        }
+    }
+    $NewBitmap1.Dispose()
+    $NewBitmap2.Dispose()
+}
