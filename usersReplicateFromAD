@@ -1,3 +1,4 @@
+# Script for replication user attributes from AD to SharePoint User information including user pictures (photos, avatars)
 # You can save this script to ps1 file and schedule it. Here you can learn how to schedule powershell script: http://blogs.technet.com/b/heyscriptingguy/archive/2012/08/11/weekend-scripter-use-the-windows-task-scheduler-to-run-a-windows-powershell-script.aspx
 
 # Parameters
