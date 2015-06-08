@@ -1,3 +1,4 @@
+Run SharePoint Management Shell as administrator
 Copy script text and paste into SharePoint Management Shell.
 
 Repeat for each SharePoint server.
