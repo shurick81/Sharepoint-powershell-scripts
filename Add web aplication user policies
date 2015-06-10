@@ -1,0 +1,17 @@
+# correct url and accounts parameters. Then insert script text into SharePoint 2010/2013 management shell
+
+$webAppUrls = @( "http://url1", "http://url2" )
+$accounts = @( "i:0#.w|domain\user1", "i:0#.w|domain2\user3" )
+
+ForEach ( $webAppUrl in $webAppUrls )
+{
+	$webApp = Get-SPWebApplication $webAppUrl
+	ForEach ( $account in $accounts )
+	{
+		$policy = $webApp.Policies.Add( $account, $account )
+		$policyRole = $webApp.PolicyRoles.GetSpecialRole( [Microsoft.SharePoint.Administration.SPPolicyRoleType]::FullControl ) #or FullRead
+		$policy.PolicyRoleBindings.Add( $policyRole )
+	}
+	$webApp.Update()
+}
+
