@@ -1,6 +1,7 @@
 $webApplicationsLimit = @( 20, 15 )
 $HNSCMPLimit = @( 20, 15 )
 $alternativeUrlsLimit = @( 5, 4 )
+$PBSCMPLimit = @( 20, 15 )
 
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
@@ -42,6 +43,16 @@ ForEach ( $wa in $was )
 			$alarm = $true
 		}
 		$body = $body + 'Web application ' + $wa.Name + ' has ' + $urls.count + ' alternative mappings<br>'
+	}
+	$PBSCMP = $wa | Get-SPManagedPath
+	if ( $PBSCMP.count -ge $PBSCMPLimit[1] )
+	{
+		if ( $PBSCMP.count -ge $PBSCMPLimit[0] )
+		{
+			$body = $body + 'ALARM:<br>'
+			$alarm = $true
+		}
+		$body = $body + 'Web application ' + $wa.Name + ' has ' + $PBSCMP.count + ' managed paths<br>'
 	}
 }
   
