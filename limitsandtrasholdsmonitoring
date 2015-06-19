@@ -2,6 +2,7 @@ $webApplicationsLimit = @( 20, 15 )
 $HNSCMPLimit = @( 20, 15 )
 $alternativeUrlsLimit = @( 5, 4 )
 $PBSCMPLimit = @( 20, 15 )
+$appPoolsLimit = @( 10, 7 )
 
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
@@ -31,6 +32,16 @@ if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
 		$alarm = $true
 	}
 	$body = $body + 'Number of HNSC managed paths is ' + $HNSCMP.count + '<br>'
+}
+$appPoolsCount = ( [Microsoft.SharePoint.Administration.SPWebService]::ContentService.ApplicationPools ).count + ( Get-SPServiceApplicationPool ).count
+if ( $appPoolsCount -ge $appPoolsLimit[1] )
+{
+	if ( $appPoolsCount -ge $appPoolsLimit[0] )
+	{
+		$body = $body + 'ALARM:<br>'
+		$alarm = $true
+	}
+	$body = $body + 'Number of application pools is ' + $appPoolsCount + '<br>'
 }
 ForEach ( $wa in $was )
 {
