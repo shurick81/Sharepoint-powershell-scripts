@@ -1,5 +1,7 @@
 $webApplicationsLimit = @(20, 15)
-$alternativeUrls = @(5, 4)
+$HNSCMPLimit = @(20, 15)
+$alternativeUrlsLimit = @(5, 4)
+
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
 $SMTPServer = "mx01.telecomputing.no"
@@ -7,36 +9,42 @@ $SMTPPort = "25"
 
 $body = ""
 $alarm = $false
-try {
-  [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
-  Add-PSSnapin Microsoft.SharePoint.PowerShell
-  $was = Get-SPWebApplication
-  if ( $was.count -ge $webApplicationsLimit[1] )
-  {
-    if ( $was.count -ge $webApplicationsLimit[0] )
-    {
-      $body = $body + 'ALARM:<br>'
-      $alarm = $true
-    }
-    $body = $body + 'Number of web applications is ' + $was.count + '<br>'
-  }
-  ForEach ($wa in $was)
-  {
-    $urls = $wa.AlternateUrls
-    if ( $urls.count -ge alternativeUrls[1] )
-    {
-      if ( $urls.count -ge alternativeUrls[0] )
-      {
-        $body = $body + 'ALARM:<br>'
-        $alarm = $true
-      }
-      $body = $body + 'Web application ' + $wa.Name + ' has ' + $urls.count + ' alternative mappings<br>'
-    }
-  }
+[System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
+Add-PSSnapin Microsoft.SharePoint.PowerShell
+$was = Get-SPWebApplication
+if ( $was.count -ge $webApplicationsLimit[1] )
+{
+	if ( $was.count -ge $webApplicationsLimit[0] )
+	{
+		$body = $body + 'ALARM:<br>'
+		$alarm = $true
+	}
+	$body = $body + 'Number of web applications is ' + $was.count + '<br>'
 }
-catch { 
-  write-host ( "Farm|" + $error[0] )
+$HNSCMP = Get-SPManagedPath -HostHeader
+if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
+{
+	if ( $HNSCMP.count -ge $HNSCMPLimit[0] )
+	{
+		$body = $body + 'ALARM:<br>'
+		$alarm = $true
+	}
+	$body = $body + 'Number of HNSC managed paths is ' + $HNSCMP.count + '<br>'
 }
+ForEach ($wa in $was)
+{
+	$urls = $wa.AlternateUrls
+	if ( $urls.count -ge alternativeUrlsLimit[1] )
+	{
+		if ( $urls.count -ge alternativeUrlsLimit[0] )
+		{
+			$body = $body + 'ALARM:<br>'
+			$alarm = $true
+		}
+		$body = $body + 'Web application ' + $wa.Name + ' has ' + $urls.count + ' alternative mappings<br>'
+	}
+}
+  
 if ( $body -ne "" )
 {
   $body = 'Server: ' + $env:computername + '<br>' + $body
