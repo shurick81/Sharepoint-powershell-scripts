@@ -1,0 +1,48 @@
+$webApplicationsLimit = @(20, 15)
+$alternativeUrls = @(5, 4)
+$emailAddress = "alexander.sapozhkov@telecomputing.no"
+$from = "limits-checker@telecomputing.no"
+$SMTPServer = "mx01.telecomputing.no"
+$SMTPPort = "25"
+
+$body = ""
+$alarm = $false
+try {
+  [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
+  Add-PSSnapin Microsoft.SharePoint.PowerShell
+  $was = Get-SPWebApplication
+  if ( $was.count -ge $webApplicationsLimit[1] )
+  {
+    if ( $was.count -ge $webApplicationsLimit[0] )
+    {
+      $body = $body + 'ALARM:<br>'
+      $alarm = $true
+    }
+    $body = $body + 'Number of web applications is ' + $was.count + '<br>'
+  }
+  ForEach ($wa in $was)
+  {
+    $urls = $wa.AlternateUrls
+    if ( $urls.count -ge alternativeUrls[1] )
+    {
+      if ( $urls.count -ge alternativeUrls[0] )
+      {
+        $body = $body + 'ALARM:<br>'
+        $alarm = $true
+      }
+      $body = $body + 'Web application ' + $wa.Name + ' has ' + $urls.count + ' alternative mappings<br>'
+    }
+  }
+}
+catch { 
+  write-host ( "Farm|" + $error[0] )
+}
+if ( $body -ne "" )
+{
+  $body = 'Server: ' + $env:computername + '<br>' + $body
+	"Sending Email"
+	$subject = "Some limits are about to be crossed"
+	if ( $alarm ) { $subject = "ALARM! Some limits are crossed"
+	Send-MailMessage -From $from -to $emailAddress -Subject $Subject -Body $Body -SmtpServer $SMTPServer -port $SMTPPort -UseSsl -BodyAsHTML
+}
+
