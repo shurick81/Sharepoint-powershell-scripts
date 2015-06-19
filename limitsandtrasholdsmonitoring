@@ -1,6 +1,6 @@
-$webApplicationsLimit = @(20, 15)
-$HNSCMPLimit = @(20, 15)
-$alternativeUrlsLimit = @(5, 4)
+$webApplicationsLimit = @( 20, 15 )
+$HNSCMPLimit = @( 20, 15 )
+$alternativeUrlsLimit = @( 5, 4 )
 
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
@@ -9,7 +9,7 @@ $SMTPPort = "25"
 
 $body = ""
 $alarm = $false
-[System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
+[System.Reflection.Assembly]::LoadWithPartialName( "Microsoft.SharePoint" )
 Add-PSSnapin Microsoft.SharePoint.PowerShell
 $was = Get-SPWebApplication
 if ( $was.count -ge $webApplicationsLimit[1] )
@@ -47,7 +47,7 @@ ForEach ( $wa in $was )
   
 if ( $body -ne "" )
 {
-  $body = 'Server: ' + $env:computername + '<br>' + $body
+	$body = 'Server: ' + $env:computername + '<br>' + $body
 	"Sending Email"
 	$subject = "Some limits are about to be crossed"
 	if ( $alarm ) { $subject = "ALARM! Some limits are crossed" }
