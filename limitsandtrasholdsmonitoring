@@ -34,9 +34,9 @@ if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
 ForEach ($wa in $was)
 {
 	$urls = $wa.AlternateUrls
-	if ( $urls.count -ge alternativeUrlsLimit[1] )
+	if ( $urls.count -ge $alternativeUrlsLimit[1] )
 	{
-		if ( $urls.count -ge alternativeUrlsLimit[0] )
+		if ( $urls.count -ge $alternativeUrlsLimit[0] )
 		{
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
