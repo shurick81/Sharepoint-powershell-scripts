@@ -31,7 +31,7 @@ if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
 	}
 	$body = $body + 'Number of HNSC managed paths is ' + $HNSCMP.count + '<br>'
 }
-ForEach ($wa in $was)
+ForEach ( $wa in $was )
 {
 	$urls = $wa.AlternateUrls
 	if ( $urls.count -ge $alternativeUrlsLimit[1] )
@@ -50,7 +50,7 @@ if ( $body -ne "" )
   $body = 'Server: ' + $env:computername + '<br>' + $body
 	"Sending Email"
 	$subject = "Some limits are about to be crossed"
-	if ( $alarm ) { $subject = "ALARM! Some limits are crossed"
+	if ( $alarm ) { $subject = "ALARM! Some limits are crossed" }
 	Send-MailMessage -From $from -to $emailAddress -Subject $Subject -Body $Body -SmtpServer $SMTPServer -port $SMTPPort -UseSsl -BodyAsHTML
 }
 
