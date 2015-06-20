@@ -1,8 +1,13 @@
+# Tested on SharePoint 2013
+
 $webApplicationsLimit = @( 20, 15 )
 $HNSCMPLimit = @( 20, 15 )
 $alternativeUrlsLimit = @( 5, 4 )
 $PBSCMPLimit = @( 20, 15 )
 $appPoolsLimit = @( 10, 7 )
+$contentDatabasesLimit = @( 500, 450 )
+$contentDatabaseSizeLimit = @( 200, 150 ) #Gigs
+$itemsLimit = @( 5000, 4000 )
 
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
@@ -32,6 +37,29 @@ if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
 		$alarm = $true
 	}
 	$body = $body + 'Number of HNSC managed paths is ' + $HNSCMP.count + '<br>'
+}
+$contentDatabases = Get-SPContentDatabase
+if ( $contentDatabases.count -ge $contentDatabasesLimit[1] )
+{
+	if ( $contentDatabases.count -ge $contentDatabasesLimit[0] )
+	{
+		$body = $body + 'ALARM:<br>'
+		$alarm = $true
+	}
+	$body = $body + 'Number of content databases is ' + $contentDatabases.count + '<br>'
+}
+ForEach ( $contentDatabase in $contentDatabases )
+{
+	$contentDatabaseSize = $contentDatabase.DiskSizeRequired/1024/1024/1024
+	if ( $contentDatabaseSize -ge $contentDatabaseSizeLimit[1] )
+	{
+		if ( $contentDatabaseSize -ge $contentDatabaseSizeLimit[0] )
+		{
+			$body = $body + 'ALARM:<br>'
+			$alarm = $true
+		}
+		$body = $body + 'Database ' + $contentDatabase.Name + ' size is ' + $contentDatabaseSize + ' gigabytes<br>'
+	}
 }
 $appPoolsCount = ( [Microsoft.SharePoint.Administration.SPWebService]::ContentService.ApplicationPools ).count + ( Get-SPServiceApplicationPool ).count
 if ( $appPoolsCount -ge $appPoolsLimit[1] )
@@ -64,6 +92,20 @@ ForEach ( $wa in $was )
 			$alarm = $true
 		}
 		$body = $body + 'Web application ' + $wa.Name + ' has ' + $PBSCMP.count + ' managed paths<br>'
+	}
+}
+$lists = Get-SPSite -Limit All | ? { Get-SPWeb -Site $_ -Limit All } | ? { $_.Lists }
+ForEach ( $list in $lists )
+{
+	$itemsCount = $list.Items.Count
+	if ( $itemsCount -ge $itemsCountLimit[1] )
+	{
+		if ( $itemsCount -ge $itemsCountLimit[0] )
+		{
+			$body = $body + 'ALARM:<br>'
+			$alarm = $true
+		}
+		$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' has ' + $itemsCount + ' alternative mappings<br>'
 	}
 }
   
