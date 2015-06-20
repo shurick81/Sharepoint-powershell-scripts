@@ -98,9 +98,9 @@ $lists = Get-SPSite -Limit All | ? { Get-SPWeb -Site $_ -Limit All } | ? { $_.Li
 ForEach ( $list in $lists )
 {
 	$itemsCount = $list.Items.Count
-	if ( $itemsCount -ge $itemsCountLimit[1] )
+	if ( $itemsCount -ge $itemsLimit[1] )
 	{
-		if ( $itemsCount -ge $itemsCountLimit[0] )
+		if ( $itemsCount -ge $itemsLimit[0] )
 		{
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
