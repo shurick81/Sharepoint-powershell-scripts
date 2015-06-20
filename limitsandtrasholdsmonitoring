@@ -94,7 +94,7 @@ ForEach ( $wa in $was )
 		$body = $body + 'Web application ' + $wa.Name + ' has ' + $PBSCMP.count + ' managed paths<br>'
 	}
 }
-$lists = Get-SPSite -Limit All | ? { Get-SPWeb -Site $_ -Limit All } | ? { $_.Lists }
+$lists = Get-SPSite -Limit All | % { Get-SPWeb -Site $_ -Limit All } | % { $_.Lists }
 ForEach ( $list in $lists )
 {
 	$itemsCount = $list.Items.Count
