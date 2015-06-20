@@ -105,7 +105,7 @@ ForEach ( $list in $lists )
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
 		}
-		$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' has ' + $itemsCount + ' alternative mappings<br>'
+		$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' has ' + $itemsCount + ' items<br>'
 	}
 }
   
