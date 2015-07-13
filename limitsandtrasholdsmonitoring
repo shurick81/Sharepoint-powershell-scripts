@@ -1,13 +1,14 @@
 # Tested on SharePoint 2013
 
 $webApplicationsLimit = @( 20, 15 )
-$HNSCMPLimit = @( 20, 15 )
 $alternativeUrlsLimit = @( 5, 4 )
+$HNSCMPLimit = @( 20, 15 )
 $PBSCMPLimit = @( 20, 15 )
 $appPoolsLimit = @( 10, 7 )
 $contentDatabasesLimit = @( 500, 450 )
 $contentDatabaseSizeLimit = @( 200, 150 ) #Gigs
-$itemsLimit = @( 5000, 4000 )
+$listItemsLimit = @( 5000, 4000 )
+$dbItemsLimit = @( 60000000, 45000000 )
 
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
@@ -27,49 +28,6 @@ if ( $was.count -ge $webApplicationsLimit[1] )
 		$alarm = $true
 	}
 	$body = $body + 'Number of web applications is ' + $was.count + '<br>'
-}
-$HNSCMP = Get-SPManagedPath -HostHeader
-if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
-{
-	if ( $HNSCMP.count -ge $HNSCMPLimit[0] )
-	{
-		$body = $body + 'ALARM:<br>'
-		$alarm = $true
-	}
-	$body = $body + 'Number of HNSC managed paths is ' + $HNSCMP.count + '<br>'
-}
-$contentDatabases = Get-SPContentDatabase
-if ( $contentDatabases.count -ge $contentDatabasesLimit[1] )
-{
-	if ( $contentDatabases.count -ge $contentDatabasesLimit[0] )
-	{
-		$body = $body + 'ALARM:<br>'
-		$alarm = $true
-	}
-	$body = $body + 'Number of content databases is ' + $contentDatabases.count + '<br>'
-}
-ForEach ( $contentDatabase in $contentDatabases )
-{
-	$contentDatabaseSize = $contentDatabase.DiskSizeRequired/1024/1024/1024
-	if ( $contentDatabaseSize -ge $contentDatabaseSizeLimit[1] )
-	{
-		if ( $contentDatabaseSize -ge $contentDatabaseSizeLimit[0] )
-		{
-			$body = $body + 'ALARM:<br>'
-			$alarm = $true
-		}
-		$body = $body + 'Database ' + $contentDatabase.Name + ' size is ' + $contentDatabaseSize + ' gigabytes<br>'
-	}
-}
-$appPoolsCount = ( [Microsoft.SharePoint.Administration.SPWebService]::ContentService.ApplicationPools ).count + ( Get-SPServiceApplicationPool ).count
-if ( $appPoolsCount -ge $appPoolsLimit[1] )
-{
-	if ( $appPoolsCount -ge $appPoolsLimit[0] )
-	{
-		$body = $body + 'ALARM:<br>'
-		$alarm = $true
-	}
-	$body = $body + 'Number of application pools is ' + $appPoolsCount + '<br>'
 }
 ForEach ( $wa in $was )
 {
@@ -94,20 +52,75 @@ ForEach ( $wa in $was )
 		$body = $body + 'Web application ' + $wa.Name + ' has ' + $PBSCMP.count + ' managed paths<br>'
 	}
 }
-$lists = Get-SPSite -Limit All | % { Get-SPWeb -Site $_ -Limit All } | % { $_.Lists }
-ForEach ( $list in $lists )
+$HNSCMP = Get-SPManagedPath -HostHeader
+if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
 {
-	$itemsCount = $list.Items.Count
-	if ( $itemsCount -ge $itemsLimit[1] )
+	if ( $HNSCMP.count -ge $HNSCMPLimit[0] )
 	{
-		if ( $itemsCount -ge $itemsLimit[0] )
+		$body = $body + 'ALARM:<br>'
+		$alarm = $true
+	}
+	$body = $body + 'Number of HNSC managed paths is ' + $HNSCMP.count + '<br>'
+}
+$appPoolsCount = ( [Microsoft.SharePoint.Administration.SPWebService]::ContentService.ApplicationPools ).count + ( Get-SPServiceApplicationPool ).count
+if ( $appPoolsCount -ge $appPoolsLimit[1] )
+{
+	if ( $appPoolsCount -ge $appPoolsLimit[0] )
+	{
+		$body = $body + 'ALARM:<br>'
+		$alarm = $true
+	}
+	$body = $body + 'Number of application pools is ' + $appPoolsCount + '<br>'
+}
+$contentDatabases = Get-SPContentDatabase
+if ( $contentDatabases.count -ge $contentDatabasesLimit[1] )
+{
+	if ( $contentDatabases.count -ge $contentDatabasesLimit[0] )
+	{
+		$body = $body + 'ALARM:<br>'
+		$alarm = $true
+	}
+	$body = $body + 'Number of content databases is ' + $contentDatabases.count + '<br>'
+}
+ForEach ( $contentDatabase in $contentDatabases )
+{
+	$contentDatabaseSize = $contentDatabase.DiskSizeRequired/1024/1024/1024
+	if ( $contentDatabaseSize -ge $contentDatabaseSizeLimit[1] )
+	{
+		if ( $contentDatabaseSize -ge $contentDatabaseSizeLimit[0] )
 		{
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
 		}
-		$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' has ' + $itemsCount + ' items<br>'
+		$body = $body + 'Database ' + $contentDatabase.Name + ' size is ' + $contentDatabaseSize + ' gigabytes<br>'
+	}
+	$lists = $contentDatabase.Sites | % { Get-SPWeb -Site $_ -Limit All } | % { $_.Lists }
+	$dbItemsCount = 0
+	ForEach ( $list in $lists )
+	{
+		$listItemsCount = $list.Items.Count
+		$dbItemsCount = $dbItemsCount + $listItemsCount
+		if ( $listItemsCount -ge $listItemsLimit[1] )
+		{
+			if ( $listItemsCount -ge $listItemsLimit[0] )
+			{
+				$body = $body + 'ALARM:<br>'
+				$alarm = $true
+			}
+			$body = $body + 'List ' + $list.ParentWeb.Url + 	$list.RootFolder.ServerRelativeUrl + ' has ' + $listItemsCount + ' items<br>'
+		}
+	}
+	if ( $dbItemsCount -ge $dbItemsLimit[1] )
+	{
+		if ( $dbItemsCount -ge $dbItemsLimit[0] )
+		{
+			$body = $body + 'ALARM:<br>'
+			$alarm = $true
+		}		
+		$body = $body + 'Database ' + $contentDatabase.Name + ' has ' + $dbItemsCount + ' items<br>'
 	}
 }
+
   
 if ( $body -ne "" )
 {
