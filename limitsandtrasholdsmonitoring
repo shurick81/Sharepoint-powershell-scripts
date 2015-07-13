@@ -107,7 +107,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 				$body = $body + 'ALARM:<br>'
 				$alarm = $true
 			}
-			$body = $body + 'List ' + $list.ParentWeb.Url + 	$list.RootFolder.ServerRelativeUrl + ' has ' + $listItemsCount + ' items<br>'
+			$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' has ' + $listItemsCount + ' items<br>'
 		}
 	}
 	if ( $dbItemsCount -ge $dbItemsLimit[1] )
