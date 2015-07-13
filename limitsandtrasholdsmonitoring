@@ -110,6 +110,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 			$body = $body + 'List ' + $list.ParentWeb.Url + 	$list.RootFolder.ServerRelativeUrl + ' has ' + $listItemsCount + ' items<br>'
 		}
 	}
+	'Database ' + $contentDatabase.Name + ' has ' + $dbItemsCount + ' items'
 	if ( $dbItemsCount -ge $dbItemsLimit[1] )
 	{
 		if ( $dbItemsCount -ge $dbItemsLimit[0] )
