@@ -72,7 +72,7 @@ if ( $appPoolsCount -ge $appPoolsLimit[1] )
 	}
 	$body = $body + 'Number of application pools is ' + $appPoolsCount + '<br>'
 }
-$contentDatabases = Get-SPContentDatabase
+$contentDatabases = Get-SPDatabase | ? { $_.Type -eq "Content Database" }
 if ( $contentDatabases.count -ge $contentDatabasesLimit[1] )
 {
 	if ( $contentDatabases.count -ge $contentDatabasesLimit[0] )
