@@ -1,4 +1,5 @@
 # Tested on SharePoint 2013
+# Limits: https://technet.microsoft.com/en-us/library/cc262787.aspx
 
 $webApplicationsLimit = @( 20, 15 )
 $alternativeUrlsLimit = @( 5, 4 )
@@ -7,8 +8,16 @@ $PBSCMPLimit = @( 20, 15 )
 $appPoolsLimit = @( 10, 7 )
 $contentDatabasesLimit = @( 500, 450 )
 $contentDatabaseSizeLimit = @( 200, 150 ) #Gigs
-$listItemsLimit = @( 5000, 4000 )
 $dbItemsLimit = @( 60000000, 45000000 )
+$dbSCLimit = @( 10000, 7500 )
+$SCLimit = @( 750000, 500000 )
+$SCWebsLimit = @( 250000, 200000 )
+$deviceChannelsLimit = @( 10, 7 )
+$listItemsLimit = @( 30000000, 25000000 )
+$viewLookupFieldsLimit = @( 8, 6 )
+$viewItemsLimit = @( 5000, 4000 )
+$subSitesLimit = @( 2000, 1500 )
+
 
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
@@ -98,7 +107,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 	$dbItemsCount = 0
 	ForEach ( $list in $lists )
 	{
-		$listItemsCount = $list.Items.Count
+		$listItemsCount = $list.ItemCount
 		$dbItemsCount = $dbItemsCount + $listItemsCount
 		if ( $listItemsCount -ge $listItemsLimit[1] )
 		{
