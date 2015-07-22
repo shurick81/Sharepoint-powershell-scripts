@@ -1,0 +1,35 @@
+# Scripts configures preview for PDF-files. Configured Office Web Apps Server is required for this script
+# http://www.wictorwilen.se/sharepoint-2013-enabling-pdf-previews-in-document-libraries-with-office-web-apps-2013
+# download zip archive: http://www.wictorwilen.se/Media/Default/files/Wictor.PdfPreviews.zip
+# specify $zipPath and $wspFolder, copy and paste in SharePoint Management Shell
+
+$zipPath = "D:\Deploy\Wictor.PdfPreviews.zip"
+$wspFolder = "D:\Deploy" # where wsp file to be created
+$wspFile = "Wictor.PdfPreviews.wsp"
+
+$shell = new-object -com shell.application
+$zip = $shell.NameSpace( $zipPath )
+$destination = $shell.NameSpace( $wspFolder )
+$zip.items() | foreach {
+	$destination.copyhere( $_ )
+}
+
+$sln = Add-SPSolution ( $wspFolder + '\' + $wspFile )
+Get-SPWebApplication | % {
+	Install-SPSolution Wictor.PdfPreviews.wsp -GACDeployment -WebApplication $_.Url
+	while( $sln.JobExists )
+	{
+		echo "Deployment in progress..."
+		start-sleep -s 5
+	}
+}
+
+# http://www.wictorwilen.se/sharepoint-2013-enabling-pdf-previews-with-office-web-apps-2013-march-2013-update
+$ssa = Get-SPEnterpriseSearchServiceApplication
+Get-SPSite -Limit All | % {
+	$_.Url
+	$owner = Get-SPEnterpriseSearchOwner -Level SPSite -SPWeb $_.Url
+	$pdfOriginalType = Get-SPEnterpriseSearchResultItemType -Owner $owner -SearchApplication $ssa | ? { $_.Name -eq "PDF" }
+	$docType = Get-SPEnterpriseSearchResultItemType -Owner $owner -SearchApplication $ssa | ? { $_.Name -eq "Microsoft Word" }
+	New-SPEnterpriseSearchResultItemType -SearchApplication $ssa -Name "Custom_PDF" -Rules $pdfOriginalType.Rules -RulePriority ( $pdfOriginalType.RulePriority - 1 ) -DisplayProperties $pdfOriginalType.DisplayProperties -DisplayTemplateUrl $docType.DisplayTemplateUrl -Owner $owner
+}
