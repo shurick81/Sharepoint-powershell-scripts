@@ -161,6 +161,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 				$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes.Contains( $_.Type.ToString() ) ) }
 			}
 			$viewLookupFieldsCount = $viewLookupFields.Count
+			$logEntry = 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields'
 			if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[1] )
 			{
 				if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[0] )
@@ -168,10 +169,12 @@ ForEach ( $contentDatabase in $contentDatabases )
 					$body = $body + 'ALARM:<br>'
 					$alarm = $true
 				}
-				$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields<br>'
+				$body = $body + $logEntry + '<br>'
 			}
+			$logEntry
 		}
 	}
+	$logEntry = 'Database ' + $contentDatabase.Name + ' has ' + $dbItemsCount + ' items'
 	if ( $dbItemsCount -ge $dbItemsLimit[1] )
 	{
 		if ( $dbItemsCount -ge $dbItemsLimit[0] )
@@ -179,8 +182,9 @@ ForEach ( $contentDatabase in $contentDatabases )
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
 		}		
-		$body = $body + 'Database ' + $contentDatabase.Name + ' has ' + $dbItemsCount + ' items<br>'
+		$body = $body + $logEntry + '<br>'
 	}
+	$logEntry
 }
 
   
