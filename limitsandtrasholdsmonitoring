@@ -31,18 +31,22 @@ $alarm = $false
 [System.Reflection.Assembly]::LoadWithPartialName( "Microsoft.SharePoint" )
 Add-PSSnapin Microsoft.SharePoint.PowerShell
 $was = Get-SPWebApplication
-if ( $was.count -ge $webApplicationsLimit[1] )
+$webApplicationsCount = $was.Count
+$logEntry = 'Number of web applications is ' + $webApplicationsCount
+if ( $webApplicationsCount -ge $webApplicationsLimit[1] )
 {
 	if ( $was.count -ge $webApplicationsLimit[0] )
 	{
 		$body = $body + 'ALARM:<br>'
 		$alarm = $true
 	}
-	$body = $body + 'Number of web applications is ' + $was.count + '<br>'
+	$body = $logEntry + '<br>'
 }
+$logEntry
 ForEach ( $wa in $was )
 {
-	$urls = $wa.AlternateUrls
+	$alternativeUrlsCount = $wa.AlternateUrls.Count
+	$logEntry = 'Web application ' + $wa.Name + ' has ' + $urls.count + ' alternative mappings'
 	if ( $urls.count -ge $alternativeUrlsLimit[1] )
 	{
 		if ( $urls.count -ge $alternativeUrlsLimit[0] )
@@ -50,18 +54,22 @@ ForEach ( $wa in $was )
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
 		}
-		$body = $body + 'Web application ' + $wa.Name + ' has ' + $urls.count + ' alternative mappings<br>'
+		$body = $body + $logEntry + '<br>'
 	}
+	$logEntry
 	$PBSCMP = $wa | Get-SPManagedPath
-	if ( $PBSCMP.count -ge $PBSCMPLimit[1] )
+	$PBSCMPCount = $PBSCMP.Count
+	$logEntry = 'Web application ' + $wa.Name + ' has ' + $PBSCMP.count + ' managed paths'
+	if ( $PBSCMPCount -ge $PBSCMPLimit[1] )
 	{
-		if ( $PBSCMP.count -ge $PBSCMPLimit[0] )
+		if ( $PBSCMPCount -ge $PBSCMPLimit[0] )
 		{
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
 		}
-		$body = $body + 'Web application ' + $wa.Name + ' has ' + $PBSCMP.count + ' managed paths<br>'
+		$body = $body + $logEntry + '<br>'
 	}
+	$logEntry
 }
 $HNSCMP = Get-SPManagedPath -HostHeader
 if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
