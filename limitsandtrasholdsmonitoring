@@ -137,6 +137,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 			}
 			$body = $body + $logEntry + '<br>'
 		}
+		$logEntry
 		ForEach( $view in $list.Views )
 		{
 			$query = New-Object Microsoft.SharePoint.SPQuery
