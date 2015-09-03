@@ -145,6 +145,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 			$query.RowLimit = $view.RowLimit
 			$items = $list.GetItems( $query )
 			$viewItemsCount = $items.Count
+			$logEntry = 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' view ' + $view.ID + ' has ' + $viewItemsCount + ' items'
 			if ( $viewItemsCount -ge $viewItemsLimit[1] )
 			{
 				if ( $viewItemsCount -ge $viewItemsLimit[0] )
@@ -152,8 +153,9 @@ ForEach ( $contentDatabase in $contentDatabases )
 					$body = $body + 'ALARM:<br>'
 					$alarm = $true
 				}
-				$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' view ' + $view.ID + ' has ' + $viewItemsCount + ' items<br>'
+				$body = $body + $logEntry + '<br>'
 			}
+			$logEntry
 			$viewLookupFields = $view.ViewFields | % {
 				$fieldName = $_
 				$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes.Contains( $_.Type.ToString() ) ) }
