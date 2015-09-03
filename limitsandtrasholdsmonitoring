@@ -14,8 +14,8 @@ $SCLimit = @( 750000, 500000 )
 $SCWebsLimit = @( 250000, 200000 )
 $deviceChannelsLimit = @( 10, 7 )
 $listItemsLimit = @( 30000000, 25000000 )
-$viewLookupFieldsLimit = @( 8, 6 )
 $viewItemsLimit = @( 5000, 4000 )
+$viewLookupFieldsLimit = @( 8, 6 )
 $subSitesLimit = @( 2000, 1500 )
 
 
@@ -23,6 +23,8 @@ $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
 $SMTPServer = "mx01.telecomputing.no"
 $SMTPPort = "25"
+
+$lookupFieldTypes = @( "Lookup", "User", "WorkflowStatus" )
 
 $body = ""
 $alarm = $false
@@ -105,7 +107,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 	}
 	$lists = $contentDatabase.Sites | % { Get-SPWeb -Site $_ -Limit All } | % { $_.Lists }
 	$dbItemsCount = 0
-	ForEach ( $list in $lists )
+	ForEach( $list in $lists )
 	{
 		$listItemsCount = $list.ItemCount
 		$dbItemsCount = $dbItemsCount + $listItemsCount
@@ -117,6 +119,37 @@ ForEach ( $contentDatabase in $contentDatabases )
 				$alarm = $true
 			}
 			$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' has ' + $listItemsCount + ' items<br>'
+		}
+		ForEach( $view in $list.Views )
+		{
+			$query = New-Object Microsoft.SharePoint.SPQuery
+			$query.Query = $view.Query
+			$query.RowLimit = $view.RowLimit
+			$items = $list.GetItems( $query )
+			$viewItemsCount = $items.Count
+			if ( $viewItemsCount -ge $viewItemsLimit[1] )
+			{
+				if ( $viewItemsCount -ge $viewItemsLimit[0] )
+				{
+					$body = $body + 'ALARM:<br>'
+					$alarm = $true
+				}
+				$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' view ' + $view.ID + ' has ' + $viewItemsCount + ' items<br>'
+			}
+			$viewLookupFields = $view.ViewFields | % {
+				$fieldName = $_
+				$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes.Contains( $_.Type.ToString() ) ) }
+			}
+			$viewLookupFieldsCount = $viewLookupFields.Count
+			if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[1] )
+			{
+				if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[0] )
+				{
+					$body = $body + 'ALARM:<br>'
+					$alarm = $true
+				}
+				$body = $body + 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields<br>'
+			}
 		}
 	}
 	if ( $dbItemsCount -ge $dbItemsLimit[1] )
