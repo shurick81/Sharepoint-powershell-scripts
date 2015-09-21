@@ -129,7 +129,7 @@ ForEach( $folder in $folders )
 
 	$clientContext = New-Object Microsoft.SharePoint.Client.ClientContext( $destination[0] )
 	# SharePoint Online
-	$Creds = New-Object Microsoft.SharePoint.Client.SharePointOnlineCredentials( $destination[2], $destination[3] )
+	$Creds = New-Object Microsoft.SharePoint.Client.SharePointOnlineCredentials( $destination[2], ( ConvertTo-SecureString $destination[3] -AsPlainText -Force ) )
 	# Windows creds
 	# $Creds = New-Object System.Net.NetworkCredential( $destination[2], $destination[3] )
 	$clientContext.Credentials = $Creds
