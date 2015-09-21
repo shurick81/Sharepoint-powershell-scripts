@@ -1,4 +1,4 @@
-# Tested on SharePoint 2013
+# Tested on SharePoint 2013 and SharePoint 2010
 # Limits: https://technet.microsoft.com/en-us/library/cc262787.aspx
 
 $webApplicationsLimit = @( 20, 15 )
@@ -126,7 +126,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 	{
 		$listItemsCount = $list.ItemCount
 		$dbItemsCount = $dbItemsCount + $listItemsCount
-		$logEntry = 'List ' + $list.ParentWeb.Url + $list.RootFolder.Url + ' has ' + $listItemsCount + ' items'
+		$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' has ' + $listItemsCount + ' items'
 		if ( $listItemsCount -ge $listItemsLimit[1] )
 		{
 			if ( $listItemsCount -ge $listItemsLimit[0] )
@@ -144,7 +144,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 			$query.RowLimit = $view.RowLimit
 			$items = $list.GetItems( $query )
 			$viewItemsCount = $items.Count
-			$logEntry = 'List ' + $list.ParentWeb.Url + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewItemsCount + ' items'
+			$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewItemsCount + ' items'
 			if ( $viewItemsCount -ge $viewItemsLimit[1] )
 			{
 				if ( $viewItemsCount -ge $viewItemsLimit[0] )
@@ -160,7 +160,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 				$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes -Contains $_.Type.ToString() ) }
 			}
 			$viewLookupFieldsCount = $viewLookupFields.Count
-			$logEntry = 'List ' + $list.ParentWeb.Url + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields'
+			$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields'
 			if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[1] )
 			{
 				if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[0] )
