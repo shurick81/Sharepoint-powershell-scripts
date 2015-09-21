@@ -72,7 +72,7 @@ Function CopyFolder( $source, $destination, $earliestDate, $latestDate )
                 Write-host $message
 			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $message ) -Path $logfilename
 		    } catch {
-			    $errorMessage = "Deleting file " + $destFolderName + " error : " + $Error[0]
+			    $errorMessage = "Deleting folder " + $folderName + " error : " + $Error[0]
 			    Write-host $errorMessage
 			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $errorLogFileName
             }
@@ -129,9 +129,9 @@ ForEach( $folder in $folders )
 
 	$clientContext = New-Object Microsoft.SharePoint.Client.ClientContext( $destination[0] )
 	# SharePoint Online
-	# $Creds = New-Object Microsoft.SharePoint.Client.SharePointOnlineCredentials( $destination[2], $destination[3] )
+	$Creds = New-Object Microsoft.SharePoint.Client.SharePointOnlineCredentials( $destination[2], $destination[3] )
 	# Windows creds
-	$Creds = New-Object System.Net.NetworkCredential( $destination[2], $destination[3] )
+	# $Creds = New-Object System.Net.NetworkCredential( $destination[2], $destination[3] )
 	$clientContext.Credentials = $Creds
 	$method = $clientContext.GetType().GetMethod( "Load" )
 
