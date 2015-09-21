@@ -1,0 +1,142 @@
+# Replicating disk folders or/and shared folders into SharePoint folders
+# Please consider load when using this script on WFEs and in working hours
+# source(path, user, pass), destination(web, folder, user, pass)
+
+$folders = @( ,@( @( "\\server.name\share\folder name", "domain\asoidf00adm", "soidfoiweo" ), @( "http://sharepoint.portal/projects/site", "/Documents/Application Operation", "0293530sp_adm", "0ewje0jwe-0" ) ) )
+
+
+$updateExisting = $true
+$logFileName = "replicationLog.txt"
+$errorLogFileName = "errorLog.txt"
+$timeStampFileName = "timestamp.txt"
+
+
+
+Add-Type -Path "C:\Program Files\Common Files\Microsoft Shared\Web Server Extensions\15\ISAPI\Microsoft.SharePoint.Client.dll"
+Add-Type -Path "C:\Program Files\Common Files\Microsoft Shared\Web Server Extensions\15\ISAPI\Microsoft.SharePoint.Client.Runtime.dll"
+
+$load = [Microsoft.SharePoint.Client.ClientContext].GetMethod("Load")
+
+Function GetServerRelative( $url )
+{
+	return ( $url.SubString( $url.IndexOf( "/", 8 ) ) )
+}
+
+Function CopyFolder( $source, $destination, $earliestDate, $latestDate )
+{
+    $destFolder = $clientContext.Web.GetFolderByServerRelativeUrl( $destination )
+    $destFiles = $destFolder.Files
+    $clientContext.Load( $destFiles );
+    $clientContext.ExecuteQuery();
+    $filesCount = $destFiles.Count;
+    For ( $i = 0; $i -lt $destFiles.Count; $i++ )
+    {
+        $destFile = $destFiles[ $i ]
+        if ( ( Get-ChildItem ( $source + "\" + $destFile.Name ) -ErrorAction SilentlyContinue | ? { !$_.PSIsContainer } ) -eq $null )
+        {
+		    try {
+                if ( $clientContext.HasPendingRequest ) { $clientContext.ExecuteQuery(); }
+                $fileName = $destFile.Name
+                $destFile.DeleteObject()
+                $clientContext.ExecuteQuery();
+                $filesCount--;
+                $i--;
+                $message = "Deleted file " + $fileName
+                Write-host $message
+			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $message ) -Path $logfilename
+		    } catch {
+			    $errorMessage = "Deleting file " + $destFileName + " error : " + $Error[0]
+			    Write-host $errorMessage
+			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $errorLogFileName
+            }
+        }
+        
+    }
+
+    $destSubFolders = $destFolder.Folders
+    $clientContext.Load( $destSubFolders );
+    $clientContext.ExecuteQuery();
+    For ( $i = 0; $i -lt $destSubFolders.Count; $i++ )
+    {
+        $destSubFolder = $destSubFolders[ $i ]
+        if ( ( Get-ChildItem ( $source ) -ErrorAction SilentlyContinue | ? { ( $_.PSIsContainer ) -and ( $_.Name -eq $destSubFolder.Name ) } ) -eq $null )
+        {
+		    try {
+                if ( $clientContext.HasPendingRequest ) { $clientContext.ExecuteQuery(); }
+                $folderName = $destSubFolder.Name
+                $destSubFolder.DeleteObject()
+                $clientContext.ExecuteQuery();
+                $filesCount--;
+                $i--;
+                $message = "Deleted folder " + $folderName
+                Write-host $message
+			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $message ) -Path $logfilename
+		    } catch {
+			    $errorMessage = "Deleting file " + $destFolderName + " error : " + $Error[0]
+			    Write-host $errorMessage
+			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $errorLogFileName
+            }
+        }
+        
+    }
+	Foreach ( $file in ( Get-ChildItem $source | ? { ( !$_.PSIsContainer ) -and ( $_.LastWriteTime -gt $earliestDate ) -and ( $_.LastWriteTime -lt $latestDate ) } ) )
+	{
+		$toBeCreated = $false
+		$toBeUpdated = $false
+		$destFileName = $destination + '/' + $file.Name
+		try {
+            if ( $clientContext.HasPendingRequest ) { $clientContext.ExecuteQuery(); }
+		    [Microsoft.SharePoint.Client.File]::SaveBinaryDirect( $clientContext, $destFileName, $file.OpenRead(), $true );
+            $message = "Uploaded file " + $destFileName
+            Write-host $message
+            Add-Content -Value ( ( Get-Date ).ToString() + "|" + $message ) -Path $logfilename
+		} catch {
+			$errorMessage = "Uploading file " + $destFileName + " error : " + $Error[0]
+			Write-host $errorMessage
+			Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $errorLogFileName
+        }
+	}
+
+    $sourceSubFolder = Get-ChildItem $source | ? { ( $_.PSIsContainer ) }
+    ForEach	( $subFolder in $sourceSubFolder )
+	{
+		try {
+            $NewFolder = $destFolder.Folders.Add( $subFolder.Name )
+            $clientContext.Load( $NewFolder );
+            $clientContext.ExecuteQuery();
+		} catch {
+			$errorMessage = "Creating folder " + $destination + "\" + $subFolder.Name + " : " + $Error[0]
+			Write-host $errorMessage
+			Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $logfilename
+        }
+		CopyFolder( $source + "\" + $subFolder.Name ) ( $destination + "/" + $subFolder.Name ) $earliestDate $latestDate
+	}
+}
+
+$timeStampFileNameContent = Get-Content -Path $timeStampFileName
+$previousSyncDate = [datetime]$timeStampFileNameContent
+$currentDate = Get-Date
+Write-host "Earliest edited document for sync date is" $previousSyncDate
+Write-host "Latest edited document for sync date is" $currentDate
+
+ForEach( $folder in $folders )
+{
+	$source = $folder[0]
+	$destination = $folder[1]
+	 
+	$net = new-object -ComObject WScript.Network
+	$net.MapNetworkDrive( "s:", $source[0], $false, $source[1], $source[2] )
+
+	$clientContext = New-Object Microsoft.SharePoint.Client.ClientContext( $destination[0] )
+	# SharePoint Online
+	# $Creds = New-Object Microsoft.SharePoint.Client.SharePointOnlineCredentials( $destination[2], $destination[3] )
+	# Windows creds
+	$Creds = New-Object System.Net.NetworkCredential( $destination[2], $destination[3] )
+	$clientContext.Credentials = $Creds
+	$method = $clientContext.GetType().GetMethod( "Load" )
+
+	CopyFolder $source[0] ( GetServerRelative( $destination[0] + $destination[1] ) ) $previousSyncDate $currentDate
+	$net.RemoveNetworkDrive( "s:" )
+}
+
+Set-Content ( $currentDate.ToString( "o" ) ) -path $timeStampFileName
