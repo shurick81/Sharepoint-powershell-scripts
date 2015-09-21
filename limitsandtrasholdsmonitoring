@@ -22,7 +22,6 @@ $subSitesLimit = @( 2000, 1500 )
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
 $SMTPServer = "mx01.telecomputing.no"
-$SMTPPort = "25"
 
 $lookupFieldTypes = @( "Lookup", "User", "WorkflowStatus" )
 
@@ -194,6 +193,6 @@ if ( $body -ne "" )
 	"Sending Email"
 	$subject = "Some limits are about to be crossed"
 	if ( $alarm ) { $subject = "ALARM! Some limits are crossed" }
-	Send-MailMessage -From $from -to $emailAddress -Subject $Subject -Body $Body -SmtpServer $SMTPServer -port $SMTPPort -UseSsl -BodyAsHTML
+	Send-MailMessage -From $from -to $emailAddress -Subject $Subject -Body $Body -SmtpServer $SMTPServer -UseSsl -BodyAsHTML
 }
 
