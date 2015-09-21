@@ -158,7 +158,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 			$logEntry
 			$viewLookupFields = $view.ViewFields | % {
 				$fieldName = $_
-				$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes.Contains( $_.Type.ToString() ) ) }
+				$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes -Contains $_.Type.ToString() ) }
 			}
 			$viewLookupFieldsCount = $viewLookupFields.Count
 			$logEntry = 'List ' + $list.ParentWeb.Url + $list.RootFolder.ServerRelativeUrl + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields'
