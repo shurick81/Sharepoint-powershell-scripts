@@ -27,7 +27,7 @@ $lookupFieldTypes = @( "Lookup", "User", "WorkflowStatus" )
 
 $body = ""
 $objectsNumber = 0
-$maxObjectsNumber = 1000
+$maxObjectsNumber = 100000
 $alarm = $false
 [System.Reflection.Assembly]::LoadWithPartialName( "Microsoft.SharePoint" )
 Add-PSSnapin Microsoft.SharePoint.PowerShell
@@ -122,67 +122,75 @@ ForEach ( $contentDatabase in $contentDatabases )
 		$body = $body + $logEntry + '<br>'
 	}
 	$logEntry
-	$lists = $contentDatabase.Sites | % { Get-SPWeb -Site $_ -Limit All } | % { $_.Lists }
 	$dbItemsCount = 0
-	ForEach( $list in $lists )
+	$sites = $contentDatabase.Sites
+	ForEach( $site in $sites )
 	{
-		$listItemsCount = $list.ItemCount
-		$dbItemsCount = $dbItemsCount + $listItemsCount
-		$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' has ' + $listItemsCount + ' items'
-		if ( $listItemsCount -ge $listItemsLimit[1] )
+		$webs = $site.AllWebs
+		ForEach( $web in $webs )
 		{
-			if ( $listItemsCount -ge $listItemsLimit[0] )
+			$lists = $web.Lists
+			ForEach( $list in $lists )
 			{
-				$body = $body + 'ALARM:<br>'
-				$alarm = $true
-			}
-			$body = $body + $logEntry + '<br>'
-		}
-		$logEntry
-		$objectsNumber++
-		ForEach( $view in $list.Views )
-		{
-			$query = New-Object Microsoft.SharePoint.SPQuery
-			$query.Query = $view.Query
-			$query.RowLimit = $view.RowLimit
-			$items = $list.GetItems( $query )
-			$viewItemsCount = $items.Count
-			$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewItemsCount + ' items'
-			if ( $viewItemsCount -ge $viewItemsLimit[1] )
-			{
-				if ( $viewItemsCount -ge $viewItemsLimit[0] )
+				$listItemsCount = $list.ItemCount
+				$dbItemsCount = $dbItemsCount + $listItemsCount
+				$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' has ' + $listItemsCount + ' items'
+				if ( $listItemsCount -ge $listItemsLimit[1] )
 				{
-					$body = $body + 'ALARM:<br>'
-					$alarm = $true
+					if ( $listItemsCount -ge $listItemsLimit[0] )
+					{
+						$body = $body + 'ALARM:<br>'
+						$alarm = $true
+					}
+					$body = $body + $logEntry + '<br>'
 				}
-				$body = $body + $logEntry + '<br>'
-			}
-			$logEntry
-			$objectsNumber++
-			$viewLookupFields = $view.ViewFields | % {
-				$fieldName = $_
-				$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes -Contains $_.Type.ToString() ) }
-			}
-			$viewLookupFieldsCount = $viewLookupFields.Count
-			$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields'
-			if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[1] )
-			{
-				if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[0] )
+				$logEntry
+				$objectsNumber++
+				ForEach( $view in $list.Views )
 				{
-					$body = $body + 'ALARM:<br>'
-					$alarm = $true
+					$query = New-Object Microsoft.SharePoint.SPQuery
+					$query.Query = $view.Query
+					$query.RowLimit = $view.RowLimit
+					$items = $list.GetItems( $query )
+					$viewItemsCount = $items.Count
+					$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewItemsCount + ' items'
+					if ( $viewItemsCount -ge $viewItemsLimit[1] )
+					{
+						if ( $viewItemsCount -ge $viewItemsLimit[0] )
+						{
+							$body = $body + 'ALARM:<br>'
+							$alarm = $true
+						}
+						$body = $body + $logEntry + '<br>'
+					}
+					$logEntry
+					$objectsNumber++
+					$viewLookupFields = $view.ViewFields | % {
+						$fieldName = $_
+						$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes -Contains $_.Type.ToString() ) }
+					}
+					$viewLookupFieldsCount = $viewLookupFields.Count
+					$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields'
+					if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[1] )
+					{
+						if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[0] )
+						{
+							$body = $body + 'ALARM:<br>'
+							$alarm = $true
+						}
+						$body = $body + $logEntry + '<br>'
+					}
+					$logEntry
+					$objectsNumber++
 				}
-				$body = $body + $logEntry + '<br>'
+				Write-Host $objectsNumber
+				if ( $objectsNumber -ge $maxObjectsNumber )
+				{
+					$objectsNumber = 0;
+					[gc]::collect()
+					[gc]::WaitForPendingFinalizers()			
+				}
 			}
-			$logEntry
-			$objectsNumber++
-		}
-		Write-Host $objectsNumber
-		if ( $objectsNumber -ge $maxObjectsNumber )
-		{
-			$objectsNumber = 0;
-			[gc]::collect()
-			[gc]::WaitForPendingFinalizers()			
 		}
 	}
 	$logEntry = 'Database ' + $contentDatabase.Name + ' has ' + $dbItemsCount + ' items'
