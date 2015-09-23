@@ -158,7 +158,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 				$body = $body + $logEntry + '<br>'
 			}
 			$logEntry
-			$items.
+			$objectsNumber++
 			$viewLookupFields = $view.ViewFields | % {
 				$fieldName = $_
 				$list.Fields | ? { ( $_.InternalName -eq $fieldname ) -and ( $lookupFieldTypes -Contains $_.Type.ToString() ) }
