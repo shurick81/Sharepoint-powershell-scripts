@@ -184,6 +184,8 @@ ForEach ( $contentDatabase in $contentDatabases )
 		$body = $body + $logEntry + '<br>'
 	}
 	$logEntry
+	[gc]::collect()
+	[gc]::WaitForPendingFinalizers()
 }
 
   
