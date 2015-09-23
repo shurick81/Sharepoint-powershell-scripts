@@ -22,12 +22,12 @@ $subSitesLimit = @( 2000, 1500 )
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
 $SMTPServer = "mx01.telecomputing.no"
+$maxObjectsNumber = 500
 
 $lookupFieldTypes = @( "Lookup", "User", "WorkflowStatus" )
 
 $body = ""
 $objectsNumber = 0
-$maxObjectsNumber = 100000
 $alarm = $false
 [System.Reflection.Assembly]::LoadWithPartialName( "Microsoft.SharePoint" )
 Add-PSSnapin Microsoft.SharePoint.PowerShell
