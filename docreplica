@@ -6,11 +6,18 @@ $folders = @( ,@( @( "\\server.name\share\folder name", "domain\asoidf00adm", "s
 
 
 $updateExisting = $true
-$logFileName = "replicationLog.txt"
-$errorLogFileName = "errorLog.txt"
-$timeStampFileName = "timestamp.txt"
+$logFileName = "C:\Tools\docsync\replicationLog.txt"
+$errorLogFileName = "C:\Tools\docsync\errorLog.txt"
+$timeStampFileName = "C:\Tools\docsync\timestamp.txt"
 
+$emailAddresses = @( "robert.servaeus@telecomputing.se",
+                        "alexander.sapozhkov@telecomputing.no",
+                        "support@telecomputing.se" );
+# $emailAddress = ""
+$from = "docsync@telecomputing.no"
+$SMTPServer = "relay.telecomputing.no"
 
+$body = "";
 
 Add-Type -Path "C:\Program Files\Common Files\Microsoft Shared\Web Server Extensions\15\ISAPI\Microsoft.SharePoint.Client.dll"
 Add-Type -Path "C:\Program Files\Common Files\Microsoft Shared\Web Server Extensions\15\ISAPI\Microsoft.SharePoint.Client.Runtime.dll"
@@ -22,13 +29,16 @@ Function GetServerRelative( $url )
 	return ( $url.SubString( $url.IndexOf( "/", 8 ) ) )
 }
 
-Function CopyFolder( $source, $destination, $earliestDate, $latestDate )
+Function CopyFolder( $source, $destination, $earliestDate, $latestDate, $body )
 {
+    Write-Host ( "Checking folder " + $source )
     $destFolder = $clientContext.Web.GetFolderByServerRelativeUrl( $destination )
     $destFiles = $destFolder.Files
     $clientContext.Load( $destFiles );
     $clientContext.ExecuteQuery();
     $filesCount = $destFiles.Count;
+    Write-Host ( "Files: " + $filesCount )
+    # Deleting from destination
     For ( $i = 0; $i -lt $destFiles.Count; $i++ )
     {
         $destFile = $destFiles[ $i ]
@@ -41,14 +51,15 @@ Function CopyFolder( $source, $destination, $earliestDate, $latestDate )
                 $clientContext.ExecuteQuery();
                 $filesCount--;
                 $i--;
-                $message = "Deleted file " + $fileName
+                $message = "Deleted file " + $destination + "/" + $fileName
                 Write-host $message
 			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $message ) -Path $logfilename
 		    } catch {
-			    $errorMessage = "Deleting file " + $destFileName + " error : " + $Error[0]
+			    $errorMessage = "Deleting file " + $destination + "/" + $fileName + " error : " + $Error[0]
 			    Write-host $errorMessage
 			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $errorLogFileName
-            }
+                $body += ( $errorMessage + '<br>' );
+           }
         }
         
     }
@@ -72,9 +83,10 @@ Function CopyFolder( $source, $destination, $earliestDate, $latestDate )
                 Write-host $message
 			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $message ) -Path $logfilename
 		    } catch {
-			    $errorMessage = "Deleting folder " + $folderName + " error : " + $Error[0]
+			    $errorMessage = "Deleting file " + $destFolderName + " error : " + $Error[0]
 			    Write-host $errorMessage
 			    Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $errorLogFileName
+                $body += ( $errorMessage + '<br>' );
             }
         }
         
@@ -91,9 +103,10 @@ Function CopyFolder( $source, $destination, $earliestDate, $latestDate )
             Write-host $message
             Add-Content -Value ( ( Get-Date ).ToString() + "|" + $message ) -Path $logfilename
 		} catch {
-			$errorMessage = "Uploading file " + $destFileName + " error : " + $Error[0]
-			Write-host $errorMessage
-			Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $errorLogFileName
+			$errorMessage = "Uploading file " + $destFileName + " error : " + $Error[0];
+			Write-host $errorMessage;
+			Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $errorLogFileName;
+            $body += ( $errorMessage + '<br>' );
         }
 	}
 
@@ -105,12 +118,14 @@ Function CopyFolder( $source, $destination, $earliestDate, $latestDate )
             $clientContext.Load( $NewFolder );
             $clientContext.ExecuteQuery();
 		} catch {
-			$errorMessage = "Creating folder " + $destination + "\" + $subFolder.Name + " : " + $Error[0]
-			Write-host $errorMessage
-			Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $logfilename
+			$errorMessage = "Creating folder " + $destination + "\" + $subFolder.Name + " : " + $Error[0];
+			Write-host $errorMessage;
+			Add-Content -Value ( ( Get-Date ).ToString() + "|" + $errorMessage ) -Path $logfilename;
+            $body += ( $errorMessage + '<br>' );
         }
-		CopyFolder( $source + "\" + $subFolder.Name ) ( $destination + "/" + $subFolder.Name ) $earliestDate $latestDate
+		$body = CopyFolder( $source + "\" + $subFolder.Name ) ( $destination + "/" + $subFolder.Name ) $earliestDate $latestDate $body
 	}
+    return $body;
 }
 
 $timeStampFileNameContent = Get-Content -Path $timeStampFileName
@@ -129,14 +144,29 @@ ForEach( $folder in $folders )
 
 	$clientContext = New-Object Microsoft.SharePoint.Client.ClientContext( $destination[0] )
 	# SharePoint Online
-	$Creds = New-Object Microsoft.SharePoint.Client.SharePointOnlineCredentials( $destination[2], ( ConvertTo-SecureString $destination[3] -AsPlainText -Force ) )
+	# $Creds = New-Object Microsoft.SharePoint.Client.SharePointOnlineCredentials( $destination[2], $destination[3] )
 	# Windows creds
-	# $Creds = New-Object System.Net.NetworkCredential( $destination[2], $destination[3] )
+	$Creds = New-Object System.Net.NetworkCredential( $destination[2], $destination[3] )
 	$clientContext.Credentials = $Creds
 	$method = $clientContext.GetType().GetMethod( "Load" )
 
-	CopyFolder $source[0] ( GetServerRelative( $destination[0] + $destination[1] ) ) $previousSyncDate $currentDate
+	$body = CopyFolder $source[0] ( GetServerRelative( $destination[0] + $destination[1] ) ) $previousSyncDate $currentDate $body;
 	$net.RemoveNetworkDrive( "s:" )
 }
 
-Set-Content ( $currentDate.ToString( "o" ) ) -path $timeStampFileName
+if ( $body -ne "" )
+{
+	Write-Host "Sending Email"
+	$subject = "There are errrors in documents synchronization"
+
+      $message = New-Object System.Net.Mail.MailMessage
+      $message.From = $from
+      $emailAddresses | % { $message.To.Add( $_ ) }
+      $message.Subject = $Subject
+      $message.IsBodyHTML = $true
+      $message.Body = $body
+      $smtp = New-Object Net.Mail.SmtpClient( $SMTPServer )
+      $smtp.Send($message)
+} else {
+    Set-Content ( $currentDate.ToString( "o" ) ) -path $timeStampFileName
+}
