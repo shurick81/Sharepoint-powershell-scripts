@@ -1,0 +1,47 @@
+# usage example:
+# ModifyAppPackage "c:\apps folder\package1.app" "https://demo.site.com/app/pages/?{StandardTokens}" "30430bf8-ce5f-4fc6-b228-5f56a3baf5db" "https://demo.site.com/Services/AppEventReceiver.svc"
+Function ModifyAppPackage( $appFilePath, $applicationUrl, $clientId, $eventEndpoint ){
+	$appFile = Get-Item $appFilePath
+	if ( $appFile -ne $null )
+	{
+		$installationFolderPath = $appFile.DirectoryName
+		$appName = $appFile.BaseName
+		$origFileName = $appName + "_orig_app.zip"
+
+		Rename-Item $appFilePath ( $origFileName )
+		$shell = new-object -com shell.application
+		$zip = $shell.NameSpace( "$installationFolderPath\$origFileName" )
+		New-Item -ItemType directory -Path $installationFolderPath\$appName | Out-Null
+		$destination = $shell.NameSpace( "$installationFolderPath\$appName" )
+		$zip.items() | foreach {
+			$destination.copyhere( $_ )
+		}
+		
+		Remove-Item "$installationFolderPath\$origFileName" -Confirm:$false
+		$appManifestPath = "$installationFolderPath\$appName\AppManifest.xml"
+		$xml = [xml]( Get-Content $appManifestPath )
+		$node = $xml.App.Properties
+		$node.StartPage = $applicationUrl
+		$node.InstalledEventEndpoint = $eventEndpoint
+		$node = $xml.App.AppPrincipal.RemoteWebApplication
+		$node.ClientId = $clientId
+		$xml.Save( $appManifestPath )
+		$newZipFilePath = "$installationFolderPath\$appName" + "_new_app.zip"
+		if( -not ( test-path( $newZipFilePath ) ) )
+		{
+			set-content $newZipFilePath ( "PK" + [char]5 + [char]6 + ( "$( [char]0 )" * 18 ) )
+			( dir $newZipFilePath ).IsReadOnly = $false  
+		}
+
+		$zipPackage = $shell.NameSpace( $newZipFilePath )
+		$destination.items() | foreach  {
+			$zipPackage.copyhere( $_ )
+			Sleep -milliseconds 500
+		}
+		Remove-Item "$installationFolderPath\$appName" -Recurse -Confirm:$false
+
+		Rename-Item $newZipFilePath ( $appFilePath )
+	} else {
+		Write-Host "File $appFilePath is not found"
+	}
+}
