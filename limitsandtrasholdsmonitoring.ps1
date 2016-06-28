@@ -21,7 +21,7 @@ $subSitesLimit = @( 2000, 1500 )
 
 $emailAddress = "alexander.sapozhkov@telecomputing.no"
 $from = "limits-checker@telecomputing.no"
-$SMTPServer = "mx01.telecomputing.no"
+$SMTPServer = "smtp-relay.telecomputing.se"
 $maxObjectsNumber = 500
 
 $lookupFieldTypes = @( "Lookup", "User", "WorkflowStatus" )
@@ -183,7 +183,21 @@ ForEach ( $contentDatabase in $contentDatabases )
 					$logEntry
 					$objectsNumber++
 				}
-				Write-Host $objectsNumber
+				$query = New-Object Microsoft.SharePoint.SPQuery
+				$uniquePermissionsItems = $list.GetItems( $query ) | ? { $_.HasUniqueRoleAssignments -eq $true }
+				$uniquePermissionsItemsCount = $uniquePermissionsItems.Count
+				$uniquePermissionsItemsLimit = @( $contentDatabase.WebApplication.MaxUniquePermScopesPerList, ( $contentDatabase.WebApplication.MaxUniquePermScopesPerList * 0.66 ) );
+				$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' has ' + $uniquePermissionsItemsCount + ' unique permissions items'
+				if ( $uniquePermissionsItemsCount -ge $uniquePermissionsItemsLimit[1] )
+				{
+					if ( $uniquePermissionsItemsCount -ge $uniquePermissionsItemsLimit[0] )
+					{
+						$body = $body + 'ALARM:<br>'
+						$alarm = $true
+					}
+					$body = $body + $logEntry + '<br>'
+				}
+				$logEntry
 				if ( $objectsNumber -ge $maxObjectsNumber )
 				{
 					$objectsNumber = 0;
