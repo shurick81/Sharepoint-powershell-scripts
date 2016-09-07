@@ -42,8 +42,8 @@ if ( $webApplicationsCount -ge $webApplicationsLimit[1] )
 		$alarm = $true
 	}
 	$body = $logEntry + '<br>'
+	$logEntry
 }
-$logEntry
 ForEach ( $wa in $was )
 {
 	$alternativeUrlsCount = $wa.AlternateUrls.Count
@@ -56,8 +56,8 @@ ForEach ( $wa in $was )
 			$alarm = $true
 		}
 		$body = $body + $logEntry + '<br>'
+		$logEntry
 	}
-	$logEntry
 	$PBSCMP = $wa | Get-SPManagedPath
 	$PBSCMPCount = $PBSCMP.Count
 	$logEntry = 'Web application ' + $wa.Name + ' has ' + $PBSCMP.count + ' managed paths'
@@ -69,8 +69,8 @@ ForEach ( $wa in $was )
 			$alarm = $true
 		}
 		$body = $body + $logEntry + '<br>'
+		$logEntry
 	}
-	$logEntry
 }
 $HNSCMP = Get-SPManagedPath -HostHeader
 $logEntry = 'Number of HNSC managed paths is ' + $HNSCMP.count
@@ -82,8 +82,8 @@ if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
 		$alarm = $true
 	}
 	$body = $body + $logEntry + '<br>'
+	$logEntry
 }
-$logEntry
 $appPoolsCount = ( [Microsoft.SharePoint.Administration.SPWebService]::ContentService.ApplicationPools ).count + ( Get-SPServiceApplicationPool ).count
 $logEntry = 'Number of application pools is ' + $appPoolsCount
 if ( $appPoolsCount -ge $appPoolsLimit[1] )
@@ -94,8 +94,8 @@ if ( $appPoolsCount -ge $appPoolsLimit[1] )
 		$alarm = $true
 	}
 	$body = $body + $logEntry + '<br>'
+	$logEntry
 }
-$logEntry
 $contentDatabases = Get-SPDatabase | ? { $_.Type -eq "Content Database" }
 $logEntry = 'Number of content databases is ' + $contentDatabases.count
 if ( $contentDatabases.count -ge $contentDatabasesLimit[1] )
@@ -106,8 +106,8 @@ if ( $contentDatabases.count -ge $contentDatabasesLimit[1] )
 		$alarm = $true
 	}
 	$body = $body + $logEntry + '<br>'
+	$logEntry
 }
-$logEntry
 ForEach ( $contentDatabase in $contentDatabases )
 {
 	$contentDatabaseSize = $contentDatabase.DiskSizeRequired/1024/1024/1024
@@ -120,8 +120,8 @@ ForEach ( $contentDatabase in $contentDatabases )
 			$alarm = $true
 		}
 		$body = $body + $logEntry + '<br>'
+		$logEntry
 	}
-	$logEntry
 	$dbItemsCount = 0
 	$sites = $contentDatabase.Sites
 	ForEach( $site in $sites )
@@ -143,8 +143,8 @@ ForEach ( $contentDatabase in $contentDatabases )
 						$alarm = $true
 					}
 					$body = $body + $logEntry + '<br>'
+					$logEntry
 				}
-				$logEntry
 				$objectsNumber++
 				ForEach( $view in $list.Views )
 				{
@@ -162,8 +162,8 @@ ForEach ( $contentDatabase in $contentDatabases )
 							$alarm = $true
 						}
 						$body = $body + $logEntry + '<br>'
+						$logEntry
 					}
-					$logEntry
 					$objectsNumber++
 					$viewLookupFields = $view.ViewFields | % {
 						$fieldName = $_
@@ -177,10 +177,11 @@ ForEach ( $contentDatabase in $contentDatabases )
 						{
 							$body = $body + 'ALARM:<br>'
 							$alarm = $true
+							$logEntry
+							$viewLookupFields | Select InternalName, Type;
 						}
 						$body = $body + $logEntry + '<br>'
 					}
-					$logEntry
 					$objectsNumber++
 				}
 				$query = New-Object Microsoft.SharePoint.SPQuery
@@ -196,8 +197,8 @@ ForEach ( $contentDatabase in $contentDatabases )
 						$alarm = $true
 					}
 					$body = $body + $logEntry + '<br>'
+					$logEntry
 				}
-				$logEntry
 				if ( $objectsNumber -ge $maxObjectsNumber )
 				{
 					$objectsNumber = 0;
@@ -216,8 +217,8 @@ ForEach ( $contentDatabase in $contentDatabases )
 			$alarm = $true
 		}		
 		$body = $body + $logEntry + '<br>'
+		$logEntry
 	}
-	$logEntry
 
 }
 
