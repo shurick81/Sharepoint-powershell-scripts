@@ -15,7 +15,7 @@ $SCWebsLimit = @( 250000, 200000 )
 $deviceChannelsLimit = @( 10, 7 )
 $listItemsLimit = @( 30000000, 25000000 )
 $viewItemsLimit = @( 5000, 4000 )
-$viewLookupFieldsLimit = @( 8, 6 )
+$viewLookupFieldsLimit = @( 18, 16 )
 $subSitesLimit = @( 2000, 1500 )
 
 
@@ -132,6 +132,7 @@ ForEach ( $contentDatabase in $contentDatabases )
 			$lists = $web.Lists
 			ForEach( $list in $lists )
 			{
+				Write-Host ( 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url );
 				$listItemsCount = $list.ItemCount
 				$dbItemsCount = $dbItemsCount + $listItemsCount
 				$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' has ' + $listItemsCount + ' items'
@@ -184,9 +185,10 @@ ForEach ( $contentDatabase in $contentDatabases )
 					}
 					$objectsNumber++
 				}
-				$query = New-Object Microsoft.SharePoint.SPQuery
-				$uniquePermissionsItems = $list.GetItems( $query ) | ? { $_.HasUniqueRoleAssignments -eq $true }
-				$uniquePermissionsItemsCount = $uniquePermissionsItems.Count
+				$query = New-Object Microsoft.SharePoint.SPQuery;
+				$items = $list.GetItems( $query );
+				$uniquePermissionsItems = $items | ? { $_.HasUniqueRoleAssignments -eq $true };
+				$uniquePermissionsItemsCount = $uniquePermissionsItems.Count;
 				$uniquePermissionsItemsLimit = @( $contentDatabase.WebApplication.MaxUniquePermScopesPerList, ( $contentDatabase.WebApplication.MaxUniquePermScopesPerList * 0.66 ) );
 				$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' has ' + $uniquePermissionsItemsCount + ' unique permissions items'
 				if ( $uniquePermissionsItemsCount -ge $uniquePermissionsItemsLimit[1] )
