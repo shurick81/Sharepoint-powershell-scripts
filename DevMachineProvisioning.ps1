@@ -18,4 +18,5 @@ choco install -y azure-cli
 choco install -y greenshot
 choco install -y packer
 choco install -y vagrant
+Install-Module SharePointPnPPowerShellOnline -Force
 Enable-WindowsOptionalFeature -Online -FeatureName:Microsoft-Hyper-V -All
