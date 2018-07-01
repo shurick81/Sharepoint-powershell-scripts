@@ -18,6 +18,7 @@ choco install -y teamviewer
 choco install -y azure-cli
 choco install -y greenshot
 choco install -y packer
+choco install -y google-backup-and-sync
 choco install -y googledrive
 choco install -y xmind
 choco install -y vagrant
