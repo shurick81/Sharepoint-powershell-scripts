@@ -1,3 +1,4 @@
+Install-Module SharePointPnPPowerShellOnline -Force
 Set-ExecutionPolicy Bypass -Force
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 choco install -y microsoft-teams
@@ -17,8 +18,7 @@ choco install -y teamviewer
 choco install -y azure-cli
 choco install -y greenshot
 choco install -y packer
-choco install -y vagrant
 choco install -y googledrive
 choco install -y xmind
-Install-Module SharePointPnPPowerShellOnline -Force
+choco install -y vagrant
 Enable-WindowsOptionalFeature -Online -FeatureName:Microsoft-Hyper-V -All
