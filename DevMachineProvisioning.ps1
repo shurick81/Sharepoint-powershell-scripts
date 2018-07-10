@@ -3,6 +3,8 @@ Set-ExecutionPolicy Bypass -Force
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 choco install -y microsoft-teams
 choco install -y slack
+choco install -y whatsapp
+choco install -y telegram 
 choco install -y office365proplus
 choco install -y onedrive
 choco install -y paint.net
