@@ -19,6 +19,7 @@ choco install -y visualstudiocode
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest https://github.com/PowerShell/vscode-powershell/releases/download/v1.8.2/PowerShell-1.8.2.vsix PowerShell-1.8.2.vsix
 code --install-extension PowerShell-1.8.2.vsix
+code --install-extension eamodio.gitlens
 choco install -y teamviewer
 choco install -y azure-cli
 choco install -y greenshot
