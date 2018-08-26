@@ -24,8 +24,6 @@ choco install -y google-backup-and-sync
 choco install -y xmind
 choco install -y vagrant
 # close the console and run in a new one:
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-Invoke-WebRequest https://github.com/PowerShell/vscode-powershell/releases/download/v1.8.2/PowerShell-1.8.2.vsix -OutFile PowerShell-1.8.2.vsix
-code --install-extension PowerShell-1.8.2.vsix
+choco install -y vscode-powershell
 code --install-extension eamodio.gitlens
 Enable-WindowsOptionalFeature -Online -FeatureName:Microsoft-Hyper-V -All
