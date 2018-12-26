@@ -26,4 +26,5 @@ choco install -y vagrant
 # close the console and run in a new one:
 choco install -y vscode-powershell
 code --install-extension eamodio.gitlens
+code --install-extension ms-azure-devops.azure-pipelines
 Enable-WindowsOptionalFeature -Online -FeatureName:Microsoft-Hyper-V -All
