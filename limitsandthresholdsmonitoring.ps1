@@ -1,4 +1,4 @@
-# Tested on SharePoint 2013 and SharePoint 2010
+# Tested on SharePoint 2019, 2016, 2013 and 2010
 # Limits: https://technet.microsoft.com/en-us/library/cc262787.aspx
 
 $webApplicationsLimit = @( 20, 15 )
@@ -7,9 +7,11 @@ $HNSCMPLimit = @( 20, 15 )
 $PBSCMPLimit = @( 20, 15 )
 $appPoolsLimit = @( 10, 7 )
 $contentDatabasesLimit = @( 500, 450 )
-$contentDatabaseSizeLimit = @( 200, 150 ) #Gigs
+$contentDatabaseSizeLimit = @( 200, 150 ) #Gigabytes
+$SCSizeLimit = @( 100, 75 ) #Gigabytes
 $dbItemsLimit = @( 60000000, 45000000 )
 $dbSCLimit = @( 10000, 7500 )
+$dbNonPersonalSCLimit = @( 2500, 2000 )
 $SCLimit = @( 750000, 500000 )
 $SCWebsLimit = @( 250000, 200000 )
 $deviceChannelsLimit = @( 10, 7 )
@@ -34,9 +36,9 @@ Add-PSSnapin Microsoft.SharePoint.PowerShell
 $was = Get-SPWebApplication
 $webApplicationsCount = $was.Count
 $logEntry = 'Number of web applications is ' + $webApplicationsCount
-if ( $webApplicationsCount -ge $webApplicationsLimit[1] )
+if ( $webApplicationsCount -gt $webApplicationsLimit[1] )
 {
-	if ( $was.count -ge $webApplicationsLimit[0] )
+	if ( $webApplicationsCount -gt $webApplicationsLimit[0] )
 	{
 		$body = $body + 'ALARM:<br>'
 		$alarm = $true
@@ -48,9 +50,9 @@ ForEach ( $wa in $was )
 {
 	$alternativeUrlsCount = $wa.AlternateUrls.Count
 	$logEntry = 'Web application ' + $wa.Name + ' has ' + $urls.count + ' alternative mappings'
-	if ( $urls.count -ge $alternativeUrlsLimit[1] )
+	if ( $urls.count -gt $alternativeUrlsLimit[1] )
 	{
-		if ( $urls.count -ge $alternativeUrlsLimit[0] )
+		if ( $urls.count -gt $alternativeUrlsLimit[0] )
 		{
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
@@ -61,9 +63,9 @@ ForEach ( $wa in $was )
 	$PBSCMP = $wa | Get-SPManagedPath
 	$PBSCMPCount = $PBSCMP.Count
 	$logEntry = 'Web application ' + $wa.Name + ' has ' + $PBSCMP.count + ' managed paths'
-	if ( $PBSCMPCount -ge $PBSCMPLimit[1] )
+	if ( $PBSCMPCount -gt $PBSCMPLimit[1] )
 	{
-		if ( $PBSCMPCount -ge $PBSCMPLimit[0] )
+		if ( $PBSCMPCount -gt $PBSCMPLimit[0] )
 		{
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
@@ -74,9 +76,9 @@ ForEach ( $wa in $was )
 }
 $HNSCMP = Get-SPManagedPath -HostHeader
 $logEntry = 'Number of HNSC managed paths is ' + $HNSCMP.count
-if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
+if ( $HNSCMP.count -gt $HNSCMPLimit[1] )
 {
-	if ( $HNSCMP.count -ge $HNSCMPLimit[0] )
+	if ( $HNSCMP.count -gt $HNSCMPLimit[0] )
 	{
 		$body = $body + 'ALARM:<br>'
 		$alarm = $true
@@ -86,9 +88,9 @@ if ( $HNSCMP.count -ge $HNSCMPLimit[1] )
 }
 $appPoolsCount = ( [Microsoft.SharePoint.Administration.SPWebService]::ContentService.ApplicationPools ).count + ( Get-SPServiceApplicationPool ).count
 $logEntry = 'Number of application pools is ' + $appPoolsCount
-if ( $appPoolsCount -ge $appPoolsLimit[1] )
+if ( $appPoolsCount -gt $appPoolsLimit[1] )
 {
-	if ( $appPoolsCount -ge $appPoolsLimit[0] )
+	if ( $appPoolsCount -gt $appPoolsLimit[0] )
 	{
 		$body = $body + 'ALARM:<br>'
 		$alarm = $true
@@ -98,9 +100,9 @@ if ( $appPoolsCount -ge $appPoolsLimit[1] )
 }
 $contentDatabases = Get-SPDatabase | ? { $_.Type -eq "Content Database" }
 $logEntry = 'Number of content databases is ' + $contentDatabases.count
-if ( $contentDatabases.count -ge $contentDatabasesLimit[1] )
+if ( $contentDatabases.count -gt $contentDatabasesLimit[1] )
 {
-	if ( $contentDatabases.count -ge $contentDatabasesLimit[0] )
+	if ( $contentDatabases.count -gt $contentDatabasesLimit[0] )
 	{
 		$body = $body + 'ALARM:<br>'
 		$alarm = $true
@@ -110,35 +112,49 @@ if ( $contentDatabases.count -ge $contentDatabasesLimit[1] )
 }
 ForEach ( $contentDatabase in $contentDatabases )
 {
-	$contentDatabaseSize = $contentDatabase.DiskSizeRequired/1024/1024/1024
-	$logEntry = 'Database ' + $contentDatabase.Name + ' size is ' + $contentDatabaseSize + ' gigabytes'
-	if ( $contentDatabaseSize -ge $contentDatabaseSizeLimit[1] )
+	$contentDatabaseSize = $contentDatabase.DiskSizeRequired / 1GB;
+	$logEntry = 'Database ' + $contentDatabase.Name + ' size is ' + $contentDatabaseSize + ' gigabytes';
+	if ( $contentDatabaseSize -gt $contentDatabaseSizeLimit[1] )
 	{
-		if ( $contentDatabaseSize -ge $contentDatabaseSizeLimit[0] )
+		if ( $contentDatabaseSize -gt $contentDatabaseSizeLimit[0] )
 		{
-			$body = $body + 'ALARM:<br>'
-			$alarm = $true
+			$body = $body + 'ALARM:<br>';
+			$alarm = $true;
 		}
-		$body = $body + $logEntry + '<br>'
-		$logEntry
+		$body = $body + $logEntry + '<br>';
+		$logEntry;
 	}
-	$dbItemsCount = 0
-	$sites = $contentDatabase.Sites
-	ForEach( $site in $sites )
-	{
+	$dbItemsCount = 0;
+    $dbNonPersonalSCCount = 0;
+	$sites = $contentDatabase.Sites;
+    $sites | % {
+        $site = $_;
+        $dbNonPersonalSCCount += $site.RootWeb.WebTemplate -ne "SPSPERS";
+        $SCSize = $site.Usage.Storage / 1GB;
+        $logEntry = 'Site ' + $site.Url + ' size is ' + $SCSize + ' gigabytes';
+        if ( $SCSize -gt $SCSizeLimit[1] )
+        {
+            if ( $SCSize -gt $SCSizeLimit[0] )
+            {
+                $body = $body + 'ALARM:<br>'
+                $alarm = $true
+            }
+            $body = $body + $logEntry + '<br>'
+            $logEntry
+        }
 		$webs = $site.AllWebs
 		ForEach( $web in $webs )
 		{
 			$lists = $web.Lists
-			ForEach( $list in $lists )
-			{
+			$lists | % {
+                $list = $_;
 				Write-Host ( 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url );
 				$listItemsCount = $list.ItemCount
 				$dbItemsCount = $dbItemsCount + $listItemsCount
 				$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' has ' + $listItemsCount + ' items'
-				if ( $listItemsCount -ge $listItemsLimit[1] )
+				if ( $listItemsCount -gt $listItemsLimit[1] )
 				{
-					if ( $listItemsCount -ge $listItemsLimit[0] )
+					if ( $listItemsCount -gt $listItemsLimit[0] )
 					{
 						$body = $body + 'ALARM:<br>'
 						$alarm = $true
@@ -155,9 +171,9 @@ ForEach ( $contentDatabase in $contentDatabases )
 					$items = $list.GetItems( $query )
 					$viewItemsCount = $items.Count
 					$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewItemsCount + ' items'
-					if ( $viewItemsCount -ge $viewItemsLimit[1] )
+					if ( $viewItemsCount -gt $viewItemsLimit[1] )
 					{
-						if ( $viewItemsCount -ge $viewItemsLimit[0] )
+						if ( $viewItemsCount -gt $viewItemsLimit[0] )
 						{
 							$body = $body + 'ALARM:<br>'
 							$alarm = $true
@@ -172,9 +188,9 @@ ForEach ( $contentDatabase in $contentDatabases )
 					}
 					$viewLookupFieldsCount = $viewLookupFields.Count
 					$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' view ' + $view.ID + ' has ' + $viewLookupFieldsCount + ' lookup fields'
-					if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[1] )
+					if ( $viewLookupFieldsCount -gt $viewLookupFieldsLimit[1] )
 					{
-						if ( $viewLookupFieldsCount -ge $viewLookupFieldsLimit[0] )
+						if ( $viewLookupFieldsCount -gt $viewLookupFieldsLimit[0] )
 						{
 							$body = $body + 'ALARM:<br>'
 							$alarm = $true
@@ -191,9 +207,9 @@ ForEach ( $contentDatabase in $contentDatabases )
 				$uniquePermissionsItemsCount = $uniquePermissionsItems.Count;
 				$uniquePermissionsItemsLimit = @( $contentDatabase.WebApplication.MaxUniquePermScopesPerList, ( $contentDatabase.WebApplication.MaxUniquePermScopesPerList * 0.66 ) );
 				$logEntry = 'List ' + $list.ParentWeb.Url + '/' + $list.RootFolder.Url + ' has ' + $uniquePermissionsItemsCount + ' unique permissions items'
-				if ( $uniquePermissionsItemsCount -ge $uniquePermissionsItemsLimit[1] )
+				if ( $uniquePermissionsItemsCount -gt $uniquePermissionsItemsLimit[1] )
 				{
-					if ( $uniquePermissionsItemsCount -ge $uniquePermissionsItemsLimit[0] )
+					if ( $uniquePermissionsItemsCount -gt $uniquePermissionsItemsLimit[0] )
 					{
 						$body = $body + 'ALARM:<br>'
 						$alarm = $true
@@ -210,10 +226,33 @@ ForEach ( $contentDatabase in $contentDatabases )
 			}
 		}
 	}
+    $dbSCCount = $contentDatabase.Sites.Count;
+    $logEntry = 'Database ' + $contentDatabase.Name + ' has ' + $dbSCCount + ' site collections';
+    if ( $dbSCCount -gt $dbSCLimit[1] )
+    {
+        if ( $dbSCCount -gt $dbSCLimit[0] )
+        {
+            $body = $body + 'ALARM:<br>'
+            $alarm = $true
+        }
+        $body = $body + $logEntry + '<br>'
+        $logEntry
+    }
+    $logEntry = 'Database ' + $contentDatabase.Name + ' has ' + $dbNonPersonalSCCount + ' non-Personal site collections';
+    if ( $dbNonPersonalSCCount -gt $dbNonPersonalSCLimit[1] )
+    {
+        if ( $dbNonPersonalSCCount -gt $dbNonPersonalSCLimit[0] )
+        {
+            $body = $body + 'ALARM:<br>'
+            $alarm = $true
+        }
+        $body = $body + $logEntry + '<br>'
+        $logEntry
+    }
 	$logEntry = 'Database ' + $contentDatabase.Name + ' has ' + $dbItemsCount + ' items'
-	if ( $dbItemsCount -ge $dbItemsLimit[1] )
+	if ( $dbItemsCount -gt $dbItemsLimit[1] )
 	{
-		if ( $dbItemsCount -ge $dbItemsLimit[0] )
+		if ( $dbItemsCount -gt $dbItemsLimit[0] )
 		{
 			$body = $body + 'ALARM:<br>'
 			$alarm = $true
@@ -224,7 +263,6 @@ ForEach ( $contentDatabase in $contentDatabases )
 
 }
 
-  
 if ( $body -ne "" )
 {
 	$body = 'Server: ' + $env:computername + '<br>' + $body
@@ -233,4 +271,3 @@ if ( $body -ne "" )
 	if ( $alarm ) { $subject = "ALARM! Some limits are crossed" }
 	Send-MailMessage -From $from -to $emailAddress -Subject $Subject -Body $Body -SmtpServer $SMTPServer -UseSsl -BodyAsHTML
 }
-
