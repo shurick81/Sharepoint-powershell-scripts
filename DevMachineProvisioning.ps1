@@ -15,7 +15,7 @@ choco install -y firefox
 choco install -y git
 choco install -y rdcman
 choco install -y nodejs --version=10.16.3
-choco install -y visualstudiocode
+choco install -y vscode
 choco install -y teamviewer
 choco install -y azure-cli
 choco install -y greenshot
